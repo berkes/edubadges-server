@@ -27,21 +27,40 @@ from cachemodel.managers import CacheModelManager
 from cachemodel.models import CacheModel
 from directaward.models import DirectAward, DirectAwardBundle
 from entity.models import BaseVersionedEntity, EntityUserProvisionmentMixin
-from issuer.managers import BadgeInstanceManager, IssuerManager, BadgeClassManager, BadgeInstanceEvidenceManager
-from mainsite.exceptions import BadgrValidationError, BadgrValidationFieldError, BadgrValidationMultipleFieldError
+from issuer.managers import (
+    BadgeInstanceManager,
+    IssuerManager,
+    BadgeClassManager,
+    BadgeInstanceEvidenceManager,
+)
+from mainsite.exceptions import (
+    BadgrValidationError,
+    BadgrValidationFieldError,
+    BadgrValidationMultipleFieldError,
+)
 from mainsite.mixins import ImageUrlGetterMixin, DefaultLanguageMixin
 from mainsite.models import BadgrApp, BaseAuditedModel, ArchiveMixin
-from mainsite.utils import OriginSetting, generate_entity_uri, EmailMessageMaker, send_mail
+from mainsite.utils import (
+    OriginSetting,
+    generate_entity_uri,
+    EmailMessageMaker,
+    send_mail,
+)
 from signing import tsob
 from signing.models import AssertionTimeStamp, PublicKeyIssuer
 from signing.models import PublicKey
 from staff.mixins import PermissionedModelMixin
 from staff.models import BadgeClassStaff, IssuerStaff
-from .utils import generate_sha256_hashstring, CURRENT_OBI_VERSION, get_obi_context, add_obi_version_ifneeded, \
-    UNVERSIONED_BAKED_VERSION
+from .utils import (
+    generate_sha256_hashstring,
+    CURRENT_OBI_VERSION,
+    get_obi_context,
+    add_obi_version_ifneeded,
+    UNVERSIONED_BAKED_VERSION,
+)
 
-AUTH_USER_MODEL = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
-logger = logging.getLogger('Badgr.Debug')
+AUTH_USER_MODEL = getattr(settings, "AUTH_USER_MODEL", "auth.User")
+logger = logging.getLogger("Badgr.Debug")
 
 
 class OriginalJsonMixin(models.Model):
@@ -60,11 +79,16 @@ class OriginalJsonMixin(models.Model):
     def get_filtered_json(self, excluded_fields=()):
         original = self.get_original_json()
         if original is not None:
-            return {key: original[key] for key in [k for k in list(original.keys()) if k not in excluded_fields]}
+            return {
+                key: original[key]
+                for key in [
+                    k for k in list(original.keys()) if k not in excluded_fields
+                ]
+            }
 
 
 class BaseOpenBadgeObjectModel(OriginalJsonMixin, CacheModel):
-    source = models.CharField(max_length=254, default='local')
+    source = models.CharField(max_length=254, default="local")
     source_url = models.CharField(max_length=254, blank=True, null=True, default=None)
 
     class Meta:
@@ -94,9 +118,9 @@ class BaseOpenBadgeObjectModel(OriginalJsonMixin, CacheModel):
             # add new
             for ext_name, ext in list(value.items()):
                 ext_json = json_dumps(ext)
-                ext, ext_created = self.get_extensions_manager().get_or_create(name=ext_name, defaults=dict(
-                    original_json=ext_json
-                ))
+                ext, ext_created = self.get_extensions_manager().get_or_create(
+                    name=ext_name, defaults=dict(original_json=ext_json)
+                )
                 if not ext_created:
                     ext.original_json = ext_json
                     ext.save()
@@ -119,23 +143,33 @@ class BaseOpenBadgeExtension(CacheModel):
         abstract = True
 
 
-class Issuer(EntityUserProvisionmentMixin,
-             ArchiveMixin,
-             PermissionedModelMixin,
-             ImageUrlGetterMixin,
-             BaseAuditedModel,
-             DefaultLanguageMixin,
-             BaseVersionedEntity,
-             BaseOpenBadgeObjectModel):
-    entity_class_name = 'Issuer'
+class Issuer(
+    EntityUserProvisionmentMixin,
+    ArchiveMixin,
+    PermissionedModelMixin,
+    ImageUrlGetterMixin,
+    BaseAuditedModel,
+    DefaultLanguageMixin,
+    BaseVersionedEntity,
+    BaseOpenBadgeObjectModel,
+):
+    entity_class_name = "Issuer"
     DUTCH_NAME = "issuer"
 
-    staff = models.ManyToManyField('badgeuser.BadgeUser', through='staff.IssuerStaff')
-    badgrapp = models.ForeignKey('mainsite.BadgrApp', on_delete=models.SET_NULL, blank=True, null=True, default=None)
+    staff = models.ManyToManyField("badgeuser.BadgeUser", through="staff.IssuerStaff")
+    badgrapp = models.ForeignKey(
+        "mainsite.BadgrApp",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        default=None,
+    )
     name_english = models.CharField(max_length=512, null=True)  # either this name,
-    name_dutch = models.CharField(max_length=512, null=True)  # or this one, must be supplied to pass save() method
-    image_english = models.FileField(upload_to='uploads/issuers', blank=True, null=True)
-    image_dutch = models.FileField(upload_to='uploads/issuers', blank=True, null=True)
+    name_dutch = models.CharField(
+        max_length=512, null=True
+    )  # or this one, must be supplied to pass save() method
+    image_english = models.FileField(upload_to="uploads/issuers", blank=True, null=True)
+    image_dutch = models.FileField(upload_to="uploads/issuers", blank=True, null=True)
     description_english = models.TextField(blank=True, null=True, default=None)
     description_dutch = models.TextField(blank=True, null=True, default=None)
     url_english = models.CharField(max_length=254, blank=True, null=True, default=None)
@@ -144,19 +178,27 @@ class Issuer(EntityUserProvisionmentMixin,
     old_json = JSONField()
     objects = IssuerManager()
     cached = CacheModelManager()
-    faculty = models.ForeignKey('institution.Faculty', on_delete=models.CASCADE, blank=False, null=False)
+    faculty = models.ForeignKey(
+        "institution.Faculty", on_delete=models.CASCADE, blank=False, null=False
+    )
 
     @property
     def description(self):
-        return self.return_value_according_to_language(self.description_english, self.description_dutch)
+        return self.return_value_according_to_language(
+            self.description_english, self.description_dutch
+        )
 
     @property
     def name(self):
-        return self.return_value_according_to_language(self.name_english, self.name_dutch)
+        return self.return_value_according_to_language(
+            self.name_english, self.name_dutch
+        )
 
     @property
     def image(self):
-        image = self.return_value_according_to_language(self.image_english, self.image_dutch)
+        image = self.return_value_according_to_language(
+            self.image_english, self.image_dutch
+        )
         if not image:
             return self.institution.image
         return image
@@ -181,59 +223,90 @@ class Issuer(EntityUserProvisionmentMixin,
                     total_assertions_revoked += 1
                 unique_recipients.add(assertion.user)
             total_enrollments += badgeclass.cached_enrollments().__len__()
-        return {'name': self.name,
-                'type': self.__class__.__name__.capitalize(),
-                'id': self.pk,
-                'total_badgeclasses': self.cached_badgeclasses().__len__(),
-                'total_enrollments': total_enrollments,
-                'total_recipients': unique_recipients.__len__(),
-                'total_assertions_formal': total_assertions_formal,
-                'total_assertions_informal': total_assertions_informal,
-                'total_assertions_revoked': total_assertions_revoked}
+        return {
+            "name": self.name,
+            "type": self.__class__.__name__.capitalize(),
+            "id": self.pk,
+            "total_badgeclasses": self.cached_badgeclasses().__len__(),
+            "total_enrollments": total_enrollments,
+            "total_recipients": unique_recipients.__len__(),
+            "total_assertions_formal": total_assertions_formal,
+            "total_assertions_informal": total_assertions_informal,
+            "total_assertions_revoked": total_assertions_revoked,
+        }
 
     def validate_unique(self, exclude=None):
         if not self.archived:
             if self.name_dutch and self.name_english:
-                query = Q(name_english=self.name_english) | Q(name_dutch=self.name_dutch)
+                query = Q(name_english=self.name_english) | Q(
+                    name_dutch=self.name_dutch
+                )
             elif self.name_english:
                 query = Q(name_english=self.name_english)
             elif self.name_dutch:
                 query = Q(name_english=self.name_english)
             else:
-                raise BadgrValidationMultipleFieldError([
-                    ['name_english', 'Either Dutch or English name is required', 913],
-                    ['name_dutch', 'Either Dutch or English name is required', 913]
-                ])
-            issuer_same_name = self.__class__.objects \
-                .filter(query,
-                        faculty=self.faculty,
-                        archived=False) \
-                .exclude(pk=self.pk).first()
+                raise BadgrValidationMultipleFieldError(
+                    [
+                        [
+                            "name_english",
+                            "Either Dutch or English name is required",
+                            913,
+                        ],
+                        ["name_dutch", "Either Dutch or English name is required", 913],
+                    ]
+                )
+            issuer_same_name = (
+                self.__class__.objects.filter(
+                    query, faculty=self.faculty, archived=False
+                )
+                .exclude(pk=self.pk)
+                .first()
+            )
             if issuer_same_name:
-                name_english_the_same = issuer_same_name.name_english == self.name_english and bool(
-                    issuer_same_name.name_english)
-                name_dutch_the_same = issuer_same_name.name_dutch == self.name_dutch and bool(
-                    issuer_same_name.name_dutch)
+                name_english_the_same = (
+                    issuer_same_name.name_english == self.name_english
+                    and bool(issuer_same_name.name_english)
+                )
+                name_dutch_the_same = (
+                    issuer_same_name.name_dutch == self.name_dutch
+                    and bool(issuer_same_name.name_dutch)
+                )
                 both_the_same = name_english_the_same and name_dutch_the_same
                 if both_the_same:
-                    raise BadgrValidationMultipleFieldError([
-                        ['name_english', "There is already an Issuer with this English name inside this Issuer group",
-                         908],
-                        ['name_dutch', "There is already an Issuer with this Dutch name inside this Issuer group", 914]
-                    ])
+                    raise BadgrValidationMultipleFieldError(
+                        [
+                            [
+                                "name_english",
+                                "There is already an Issuer with this English name inside this Issuer group",
+                                908,
+                            ],
+                            [
+                                "name_dutch",
+                                "There is already an Issuer with this Dutch name inside this Issuer group",
+                                914,
+                            ],
+                        ]
+                    )
                 elif name_dutch_the_same:
-                    raise BadgrValidationFieldError('name_dutch',
-                                                    "There is already an Issuer with this Dutch name inside this Issuer group",
-                                                    914)
+                    raise BadgrValidationFieldError(
+                        "name_dutch",
+                        "There is already an Issuer with this Dutch name inside this Issuer group",
+                        914,
+                    )
                 elif name_english_the_same:
-                    raise BadgrValidationFieldError('name_english',
-                                                    "There is already an Issuer with this English name inside this Issuer group",
-                                                    908)
+                    raise BadgrValidationFieldError(
+                        "name_english",
+                        "There is already an Issuer with this English name inside this Issuer group",
+                        908,
+                    )
         return super(Issuer, self).validate_unique(exclude=exclude)
 
     def save(self, *args, **kwargs):
         if not self.name_english and not self.name_dutch:
-            raise BadgrValidationError('Either English or Dutch name must be supplied', 999)
+            raise BadgrValidationError(
+                "Either English or Dutch name must be supplied", 999
+            )
         self.validate_unique()
         return super(Issuer, self).save(*args, **kwargs)
 
@@ -263,7 +336,11 @@ class Issuer(EntityUserProvisionmentMixin,
         return IssuerStaff.objects.create(user=user, issuer=self, **permissions)
 
     def get_badgeclasses(self, user, permissions):
-        return [bc for bc in self.cached_badgeclasses() if bc.has_permissions(user, permissions)]
+        return [
+            bc
+            for bc in self.cached_badgeclasses()
+            if bc.has_permissions(user, permissions)
+        ]
 
     @property
     def badgeclasses_count(self):
@@ -288,12 +365,12 @@ class Issuer(EntityUserProvisionmentMixin,
         return r
 
     def get_absolute_url(self):
-        return reverse('issuer_json', kwargs={'entity_id': self.entity_id})
+        return reverse("issuer_json", kwargs={"entity_id": self.entity_id})
 
     def get_url_with_public_key(self, public_key_issuer):
         if public_key_issuer.issuer != self:
-            raise ValueError('Public key issuer does not belong to this Issuer.')
-        return self.jsonld_id + '/pubkey/{}'.format(public_key_issuer.entity_id)
+            raise ValueError("Public key issuer does not belong to this Issuer.")
+        return self.jsonld_id + "/pubkey/{}".format(public_key_issuer.entity_id)
 
     def create_empty_key_address(self):
         """
@@ -323,7 +400,15 @@ class Issuer(EntityUserProvisionmentMixin,
     @property
     def owners(self):
         return self.get_local_staff_members(
-            ['may_create', 'may_read', 'may_update', 'may_delete', 'may_award', 'may_administrate_users'])
+            [
+                "may_create",
+                "may_read",
+                "may_update",
+                "may_delete",
+                "may_award",
+                "may_administrate_users",
+            ]
+        )
 
     @property
     def current_signers(self):
@@ -340,55 +425,73 @@ class Issuer(EntityUserProvisionmentMixin,
         symmetric_key.validate_password(password)
         return tsob.create_new_private_key(password, symmetric_key, self)
 
-    def get_json(self, obi_version=CURRENT_OBI_VERSION, include_extra=True, use_canonical_id=False, signed=False,
-                 public_key_issuer=None, expand_public_key=False, expand_institution=False, expand_awards=False):
+    def get_json(
+        self,
+        obi_version=CURRENT_OBI_VERSION,
+        include_extra=True,
+        use_canonical_id=False,
+        signed=False,
+        public_key_issuer=None,
+        expand_public_key=False,
+        expand_institution=False,
+        expand_awards=False,
+    ):
         if signed and not public_key_issuer:
             raise ValueError(
-                'Cannot return signed issuer json without knowing which public key address is going to be used.')
+                "Cannot return signed issuer json without knowing which public key address is going to be used."
+            )
         if public_key_issuer:
             if public_key_issuer.issuer != self:
-                raise ValueError('Public key issuer does not belong to this issuer.')
+                raise ValueError("Public key issuer does not belong to this issuer.")
         obi_version, context_iri = get_obi_context(obi_version)
 
-        json = OrderedDict({'@context': context_iri})
+        json = OrderedDict({"@context": context_iri})
         # For spec compliance we also need the non-language properties
-        json.update(OrderedDict(
-            type='Issuer',
-            name=self.name,
-            name_english=self.name_english,
-            name_dutch=self.name_dutch,
-            url=self.url,
-            url_english=self.url_english,
-            url_dutch=self.url_dutch,
-            email=self.email,
-            description=self.description,
-            description_english=self.description_english,
-            description_dutch=self.description_dutch,
-        ))
+        json.update(
+            OrderedDict(
+                type="Issuer",
+                name=self.name,
+                name_english=self.name_english,
+                name_dutch=self.name_dutch,
+                url=self.url,
+                url_english=self.url_english,
+                url_dutch=self.url_dutch,
+                email=self.email,
+                description=self.description,
+                description_english=self.description_english,
+                description_dutch=self.description_dutch,
+            )
+        )
         if not signed:
-            json['id'] = self.jsonld_id if use_canonical_id else add_obi_version_ifneeded(self.jsonld_id, obi_version)
+            json["id"] = (
+                self.jsonld_id
+                if use_canonical_id
+                else add_obi_version_ifneeded(self.jsonld_id, obi_version)
+            )
         elif signed:
-            json['id'] = self.get_url_with_public_key(public_key_issuer)
+            json["id"] = self.get_url_with_public_key(public_key_issuer)
 
         if self.image:
-            image_url = OriginSetting.HTTP + reverse('issuer_image', kwargs={'entity_id': self.entity_id})
-            json['image'] = image_url
+            image_url = OriginSetting.HTTP + reverse(
+                "issuer_image", kwargs={"entity_id": self.entity_id}
+            )
+            json["image"] = image_url
             if self.image_english:
-                json['image_english'] = f"{image_url}?lang=en"
+                json["image_english"] = f"{image_url}?lang=en"
             if self.image_dutch:
-                json['image_dutch'] = f"{image_url}?lang=nl"
+                json["image_dutch"] = f"{image_url}?lang=nl"
             if self.original_json:
-                image_info = self.get_original_json().get('image', None)
+                image_info = self.get_original_json().get("image", None)
                 if isinstance(image_info, dict):
-                    json['image'] = image_info
-                    json['image']['id'] = image_url
+                    json["image"] = image_info
+                    json["image"]["id"] = image_url
 
         # source url
         if self.source_url:
-            if obi_version == '1_1':
+            if obi_version == "1_1":
                 json["source_url"] = self.source_url
                 json["hosted_url"] = OriginSetting.HTTP + self.get_absolute_url()
-            elif obi_version == '2_0':
+            elif obi_version == "2_0":
                 json["sourceUrl"] = self.source_url
                 json["hostedUrl"] = OriginSetting.HTTP + self.get_absolute_url()
 
@@ -400,37 +503,40 @@ class Issuer(EntityUserProvisionmentMixin,
         # institution extensions
         if self.faculty:
             if self.faculty.institution.brin:
-                json['extensions:InstitutionIdentifierExtension'] = {
+                json["extensions:InstitutionIdentifierExtension"] = {
                     "@context": f"{settings.EXTENSIONS_ROOT_URL}/extensions/InstitutionIdentifierExtension/context.json",
                     "type": ["Extension", "extensions:InstitutionIdentifierExtension"],
-                    "InstitutionIdentifier": self.faculty.institution.brin
+                    "InstitutionIdentifier": self.faculty.institution.brin,
                 }
             if self.faculty.institution.grading_table:
-                json['extensions:GradingTableExtension'] = {
+                json["extensions:GradingTableExtension"] = {
                     "@context": f"{settings.EXTENSIONS_ROOT_URL}/extensions/GradingTableExtension/context.json",
                     "type": ["Extension", "extensions:GradingTableExtension"],
-                    "GradingTableURL": self.faculty.institution.grading_table
+                    "GradingTableURL": self.faculty.institution.grading_table,
                 }
             if self.faculty.institution.name:
-                json['extensions:InstitutionNameExtension'] = {
+                json["extensions:InstitutionNameExtension"] = {
                     "@context": f"{settings.EXTENSIONS_ROOT_URL}/extensions/InstitutionNameExtension/context.json",
                     "type": ["Extension", "extensions:InstitutionNameExtension"],
-                    "InstitutionName": self.faculty.institution.name
+                    "InstitutionName": self.faculty.institution.name,
                 }
 
         if expand_institution:
             if not self.faculty:
-                raise ValueError('issuer is not assigned to a faculty')
+                raise ValueError("issuer is not assigned to a faculty")
             if not self.faculty.institution:
-                raise ValueError('issuer is not assigned to an institution')
-            json['faculty'] = {'name': self.faculty.name,
-                               'name_english': self.faculty.name_english,
-                               'name_dutch': self.faculty.name_dutch,
-                               'on_behalf_of': self.faculty.on_behalf_of,
-                               'on_behalf_of_url': self.faculty.on_behalf_of_url,
-                               'on_behalf_of_display_name': self.faculty.on_behalf_of_display_name,
-                               'institution': self.faculty.institution.get_json(obi_version=CURRENT_OBI_VERSION,
-                                                                                expand_awards=expand_awards)}
+                raise ValueError("issuer is not assigned to an institution")
+            json["faculty"] = {
+                "name": self.faculty.name,
+                "name_english": self.faculty.name_english,
+                "name_dutch": self.faculty.name_dutch,
+                "on_behalf_of": self.faculty.on_behalf_of,
+                "on_behalf_of_url": self.faculty.on_behalf_of_url,
+                "on_behalf_of_display_name": self.faculty.on_behalf_of_display_name,
+                "institution": self.faculty.institution.get_json(
+                    obi_version=CURRENT_OBI_VERSION, expand_awards=expand_awards
+                ),
+            }
 
         # pass through imported json
         if include_extra:
@@ -442,11 +548,14 @@ class Issuer(EntityUserProvisionmentMixin,
 
         try:
             if signed:
-                json['verification'] = {"type": "SignedBadge", "creator": public_key_issuer.public_url}
+                json["verification"] = {
+                    "type": "SignedBadge",
+                    "creator": public_key_issuer.public_url,
+                }
                 if expand_public_key:
-                    json['publicKey'] = public_key_issuer.get_json()
+                    json["publicKey"] = public_key_issuer.get_json()
                 else:
-                    json['publicKey'] = public_key_issuer.public_url
+                    json["publicKey"] = public_key_issuer.public_url
         except PublicKey.DoesNotExist:
             pass
         return json
@@ -455,32 +564,55 @@ class Issuer(EntityUserProvisionmentMixin,
     def json(self):
         return self.get_json()
 
-    def get_filtered_json(self,
-                          excluded_fields=('@context', 'id', 'type', 'name', 'url', 'description', 'image', 'email')):
+    def get_filtered_json(
+        self,
+        excluded_fields=(
+            "@context",
+            "id",
+            "type",
+            "name",
+            "url",
+            "description",
+            "image",
+            "email",
+        ),
+    ):
         return super(Issuer, self).get_filtered_json(excluded_fields=excluded_fields)
 
     @property
     def cached_badgrapp(self):
-        id = self.badgrapp_id if self.badgrapp_id else getattr(settings, 'BADGR_APP_ID', 1)
+        id = (
+            self.badgrapp_id
+            if self.badgrapp_id
+            else getattr(settings, "BADGR_APP_ID", 1)
+        )
         return BadgrApp.cached.get(id=id)
 
     def __unicode__(self):
         return self.name
 
 
-class BadgeClass(EntityUserProvisionmentMixin,
-                 ArchiveMixin,
-                 PermissionedModelMixin,
-                 ImageUrlGetterMixin,
-                 BaseAuditedModel,
-                 DefaultLanguageMixin,
-                 BaseVersionedEntity,
-                 BaseOpenBadgeObjectModel):
-    entity_class_name = 'BadgeClass'
+class BadgeClass(
+    EntityUserProvisionmentMixin,
+    ArchiveMixin,
+    PermissionedModelMixin,
+    ImageUrlGetterMixin,
+    BaseAuditedModel,
+    DefaultLanguageMixin,
+    BaseVersionedEntity,
+    BaseOpenBadgeObjectModel,
+):
+    entity_class_name = "BadgeClass"
     DUTCH_NAME = "badge class"
-    issuer = models.ForeignKey(Issuer, blank=False, null=False, on_delete=models.CASCADE, related_name="badgeclasses")
+    issuer = models.ForeignKey(
+        Issuer,
+        blank=False,
+        null=False,
+        on_delete=models.CASCADE,
+        related_name="badgeclasses",
+    )
     name = models.CharField(max_length=255)
-    image = models.FileField(upload_to='uploads/badges', blank=True, null=True)
+    image = models.FileField(upload_to="uploads/badges", blank=True, null=True)
     description = models.TextField(blank=True, null=True, default=None)
     criteria_text = models.TextField(blank=True, null=True)
     formal = models.BooleanField(default=False)
@@ -493,35 +625,54 @@ class BadgeClass(EntityUserProvisionmentMixin,
     is_micro_credentials = models.BooleanField(default=False)
     direct_awarding_disabled = models.BooleanField(default=False)
     self_enrollment_disabled = models.BooleanField(default=False)
-    participation = models.CharField(max_length=254, blank=True, null=True, default=None)
-    assessment_type = models.CharField(max_length=254, blank=True, null=True, default=None)
+    participation = models.CharField(
+        max_length=254, blank=True, null=True, default=None
+    )
+    assessment_type = models.CharField(
+        max_length=254, blank=True, null=True, default=None
+    )
     assessment_id_verified = models.BooleanField(default=False)
     assessment_supervised = models.BooleanField(default=False)
-    quality_assurance_name = models.CharField(max_length=254, blank=True, null=True, default=None)
-    quality_assurance_url = models.CharField(max_length=254, blank=True, null=True, default=None)
-    quality_assurance_description = models.TextField(blank=True, null=True, default=None)
+    quality_assurance_name = models.CharField(
+        max_length=254, blank=True, null=True, default=None
+    )
+    quality_assurance_url = models.CharField(
+        max_length=254, blank=True, null=True, default=None
+    )
+    quality_assurance_description = models.TextField(
+        blank=True, null=True, default=None
+    )
     grade_achieved_required = models.BooleanField(default=False)
     stackable = models.BooleanField(default=False)
 
-    BADGE_CLASS_TYPE_MICRO = 'micro_credential'
-    BADGE_CLASS_TYPE_REGULAR = 'regular'
-    BADGE_CLASS_TYPE_CURRICULAR = 'extra_curricular'
+    BADGE_CLASS_TYPE_MICRO = "micro_credential"
+    BADGE_CLASS_TYPE_REGULAR = "regular"
+    BADGE_CLASS_TYPE_CURRICULAR = "extra_curricular"
     BADGE_CLASS_TYPE_CHOICES = (
-        (BADGE_CLASS_TYPE_MICRO, 'micro_credential'),
-        (BADGE_CLASS_TYPE_REGULAR, 'regular'),
-        (BADGE_CLASS_TYPE_CURRICULAR, 'extra_curricular'),
+        (BADGE_CLASS_TYPE_MICRO, "micro_credential"),
+        (BADGE_CLASS_TYPE_REGULAR, "regular"),
+        (BADGE_CLASS_TYPE_CURRICULAR, "extra_curricular"),
     )
-    badge_class_type = models.CharField(max_length=254, choices=BADGE_CLASS_TYPE_CHOICES,
-                                        default=BADGE_CLASS_TYPE_REGULAR)
+    badge_class_type = models.CharField(
+        max_length=254,
+        choices=BADGE_CLASS_TYPE_CHOICES,
+        default=BADGE_CLASS_TYPE_REGULAR,
+    )
 
     old_json = JSONField()
     objects = BadgeClassManager()
     cached = CacheModelManager()
-    staff = models.ManyToManyField('badgeuser.BadgeUser', through="staff.BadgeClassStaff")
+    staff = models.ManyToManyField(
+        "badgeuser.BadgeUser", through="staff.BadgeClassStaff"
+    )
     expiration_period = models.DurationField(null=True)
-    award_allowed_institutions = models.ManyToManyField('institution.Institution', blank=True,
-                                                        help_text='Allow awards to this institutions')
-    tags = models.ManyToManyField('institution.BadgeClassTag', blank=True)
+    award_allowed_institutions = models.ManyToManyField(
+        "institution.Institution",
+        blank=True,
+        help_text="Allow awards to this institutions",
+    )
+    tags = models.ManyToManyField("institution.BadgeClassTag", blank=True)
+
     class Meta:
         verbose_name_plural = "Badge classes"
 
@@ -542,22 +693,29 @@ class BadgeClass(EntityUserProvisionmentMixin,
             if assertion.revoked:
                 total_assertions_revoked += 1
             unique_recipients.add(assertion.user)
-        return {'name': self.name,
-                'type': self.__class__.__name__.capitalize(),
-                'id': self.pk,
-                'total_recipients': unique_recipients.__len__(),
-                'total_enrollments': self.cached_enrollments().__len__(),
-                'total_assertions_formal': total_assertions_formal,
-                'total_assertions_informal': total_assertions_informal,
-                'total_assertions_revoked': total_assertions_revoked}
+        return {
+            "name": self.name,
+            "type": self.__class__.__name__.capitalize(),
+            "id": self.pk,
+            "total_recipients": unique_recipients.__len__(),
+            "total_enrollments": self.cached_enrollments().__len__(),
+            "total_assertions_formal": total_assertions_formal,
+            "total_assertions_informal": total_assertions_informal,
+            "total_assertions_revoked": total_assertions_revoked,
+        }
 
     def validate_unique(self, exclude=None):
         if not self.archived:
-            if self.__class__.objects \
-                    .filter(name=self.name, issuer=self.issuer, archived=False) \
-                    .exclude(pk=self.pk) \
-                    .exists():
-                raise IntegrityError("Badgeclass with this name already exists in the same issuer.")
+            if (
+                self.__class__.objects.filter(
+                    name=self.name, issuer=self.issuer, archived=False
+                )
+                .exclude(pk=self.pk)
+                .exists()
+            ):
+                raise IntegrityError(
+                    "Badgeclass with this name already exists in the same issuer."
+                )
         return super(BadgeClass, self).validate_unique(exclude=exclude)
 
     def save(self, *args, **kwargs):
@@ -595,7 +753,9 @@ class BadgeClass(EntityUserProvisionmentMixin,
 
     @cached_method(auto_publish=True)
     def cached_pending_direct_awards(self):
-        return DirectAward.objects.filter(badgeclass=self, status=DirectAward.STATUS_UNACCEPTED)
+        return DirectAward.objects.filter(
+            badgeclass=self, status=DirectAward.STATUS_UNACCEPTED
+        )
 
     @cached_method(auto_publish=True)
     def cached_direct_award_bundles(self):
@@ -613,28 +773,38 @@ class BadgeClass(EntityUserProvisionmentMixin,
     def _get_terms(self):
         terms = self.institution.cached_terms()
         if not terms:
-            raise ValueError(f"Institution {self.institution.identifier} has no terms. This is required.")
+            raise ValueError(
+                f"Institution {self.institution.identifier} has no terms. This is required."
+            )
         if self.formal:
-            return [term for term in terms if term.terms_type == term.__class__.TYPE_FORMAL_BADGE][0]
-        return [term for term in terms if term.terms_type == term.__class__.TYPE_INFORMAL_BADGE][0]
+            return [
+                term
+                for term in terms
+                if term.terms_type == term.__class__.TYPE_FORMAL_BADGE
+            ][0]
+        return [
+            term
+            for term in terms
+            if term.terms_type == term.__class__.TYPE_INFORMAL_BADGE
+        ][0]
 
     def terms_accepted(self, user):
-        '''returns true if the user accepted the required terms'''
+        """returns true if the user accepted the required terms"""
         terms = self._get_terms()
         return terms.has_been_accepted_by(user)
 
     def accept_terms(self, user):
-        '''accepts the required terms for user'''
+        """accepts the required terms for user"""
         terms = self._get_terms()
         return terms.accept(user)
 
     def get_absolute_url(self):
-        return reverse('badgeclass_json', kwargs={'entity_id': self.entity_id})
+        return reverse("badgeclass_json", kwargs={"entity_id": self.entity_id})
 
     def get_url_with_public_key(self, public_key_issuer):
         if public_key_issuer.issuer != self.issuer:
-            raise ValueError('Public key issuer does not belong to this Issuer.')
-        return self.jsonld_id + '/pubkey/{}'.format(public_key_issuer.entity_id)
+            raise ValueError("Public key issuer does not belong to this Issuer.")
+        return self.jsonld_id + "/pubkey/{}".format(public_key_issuer.entity_id)
 
     def create_staff_membership(self, user, permissions):
         return BadgeClassStaff.objects.create(user=user, badgeclass=self, **permissions)
@@ -668,37 +838,46 @@ class BadgeClass(EntityUserProvisionmentMixin,
     @cached_method(auto_publish=True)
     def cached_enrollments(self):
         from lti_edu.models import StudentsEnrolled
+
         return StudentsEnrolled.objects.filter(badge_class=self)
 
     @cached_method(auto_publish=True)
     def cached_pending_enrollments_including_denied(self):
         from lti_edu.models import StudentsEnrolled
+
         return StudentsEnrolled.objects.filter(badge_class=self, badge_instance=None)
 
     @cached_method(auto_publish=True)
     def cached_pending_enrollments(self):
         from lti_edu.models import StudentsEnrolled
-        return StudentsEnrolled.objects.filter(badge_class=self, badge_instance=None, denied=False)
+
+        return StudentsEnrolled.objects.filter(
+            badge_class=self, badge_instance=None, denied=False
+        )
 
     @property
     def assertions_count(self):
-        return BadgeInstance.objects.filter(badgeclass=self,
-                                            revoked=False,
-                                            acceptance='Accepted').count()
+        return BadgeInstance.objects.filter(
+            badgeclass=self, revoked=False, acceptance="Accepted"
+        ).count()
 
     @property
     def direct_awarded_assertions_count(self):
-        return BadgeInstance.objects.filter(badgeclass=self,
-                                            revoked=False,
-                                            award_type='direct_award',
-                                            acceptance='Accepted').count()
+        return BadgeInstance.objects.filter(
+            badgeclass=self,
+            revoked=False,
+            award_type="direct_award",
+            acceptance="Accepted",
+        ).count()
 
     @property
     def self_requested_assertions_count(self):
-        return BadgeInstance.objects.filter(badgeclass=self,
-                                            revoked=False,
-                                            award_type='requested',
-                                            acceptance='Accepted').count()
+        return BadgeInstance.objects.filter(
+            badgeclass=self,
+            revoked=False,
+            award_type="requested",
+            acceptance="Accepted",
+        ).count()
 
     @cached_method(auto_publish=True)
     def cached_alignments(self):
@@ -712,7 +891,13 @@ class BadgeClass(EntityUserProvisionmentMixin,
     def alignment_items(self, value):
         if value is None:
             value = []
-        keys = ['target_name', 'target_url', 'target_description', 'target_framework', 'target_code']
+        keys = [
+            "target_name",
+            "target_url",
+            "target_description",
+            "target_framework",
+            "target_code",
+        ]
 
         def _identity(align):
             """build a unique identity from alignment json"""
@@ -772,87 +957,140 @@ class BadgeClass(EntityUserProvisionmentMixin,
     def get_extensions_manager(self):
         return self.badgeclassextension_set
 
-    def issue(self, recipient, created_by=None, allow_uppercase=False, extensions=None, send_email=True,
-              enforce_validated_name=True, include_evidence=True, **kwargs):
-        if not recipient.validated_name and enforce_validated_name and not self.award_non_validated_name_allowed:
-            raise serializers.ValidationError('You need a validated_name from an Institution to issue badges.')
+    def issue(
+        self,
+        recipient,
+        created_by=None,
+        allow_uppercase=False,
+        extensions=None,
+        send_email=True,
+        enforce_validated_name=True,
+        include_evidence=True,
+        **kwargs,
+    ):
+        if (
+            not recipient.validated_name
+            and enforce_validated_name
+            and not self.award_non_validated_name_allowed
+        ):
+            raise serializers.ValidationError(
+                "You need a validated_name from an Institution to issue badges."
+            )
         assertion = BadgeInstance.objects.create(
-            badgeclass=self, recipient_identifier=recipient.get_recipient_identifier(), created_by=created_by,
-            allow_uppercase=allow_uppercase, include_evidence=include_evidence,
-            user=recipient, extensions=extensions,
-            **kwargs
+            badgeclass=self,
+            recipient_identifier=recipient.get_recipient_identifier(),
+            created_by=created_by,
+            allow_uppercase=allow_uppercase,
+            include_evidence=include_evidence,
+            user=recipient,
+            extensions=extensions,
+            **kwargs,
         )
         message = EmailMessageMaker.create_earned_badge_mail(assertion)
         if send_email:
-            recipient.email_user(subject='Je hebt een edubadge ontvangen! You received an edubadge!',
-                                 html_message=message)
+            recipient.email_user(
+                subject="Je hebt een edubadge ontvangen! You received an edubadge!",
+                html_message=message,
+            )
         return assertion
 
-    def issue_signed(self, recipient, created_by=None, allow_uppercase=False, signer=None, extensions=None, **kwargs):
+    def issue_signed(
+        self,
+        recipient,
+        created_by=None,
+        allow_uppercase=False,
+        signer=None,
+        extensions=None,
+        **kwargs,
+    ):
         perms = self.get_permissions(signer)
-        if not perms['may_sign']:
-            raise serializers.ValidationError('You do not have permission to sign badges for this badgeclass.')
+        if not perms["may_sign"]:
+            raise serializers.ValidationError(
+                "You do not have permission to sign badges for this badgeclass."
+            )
         assertion = BadgeInstance.objects.create(
-            badgeclass=self, recipient_identifier=recipient.get_recipient_identifier(),
-            created_by=created_by, allow_uppercase=allow_uppercase,
-            user=recipient, extensions=extensions, **kwargs
+            badgeclass=self,
+            recipient_identifier=recipient.get_recipient_identifier(),
+            created_by=created_by,
+            allow_uppercase=allow_uppercase,
+            user=recipient,
+            extensions=extensions,
+            **kwargs,
         )
         assertion.submit_for_timestamping(signer=signer)
         return assertion
 
-    def get_json(self, obi_version=CURRENT_OBI_VERSION, include_extra=True, use_canonical_id=False, signed=False,
-                 public_key_issuer=None):
+    def get_json(
+        self,
+        obi_version=CURRENT_OBI_VERSION,
+        include_extra=True,
+        use_canonical_id=False,
+        signed=False,
+        public_key_issuer=None,
+    ):
         if not public_key_issuer and signed:
             raise ValueError(
-                'Cannot returned signed version of json without knowing which public key address was used.')
+                "Cannot returned signed version of json without knowing which public key address was used."
+            )
         obi_version, context_iri = get_obi_context(obi_version)
-        json = OrderedDict({'@context': context_iri})
-        json.update(OrderedDict(
-            type='BadgeClass',
-
-            name=self.name,
-            description=self.description_nonnull,
-
-        ))
+        json = OrderedDict({"@context": context_iri})
+        json.update(
+            OrderedDict(
+                type="BadgeClass",
+                name=self.name,
+                description=self.description_nonnull,
+            )
+        )
 
         if not signed:
-            json['id'] = self.jsonld_id if use_canonical_id else add_obi_version_ifneeded(self.jsonld_id, obi_version)
-            json['issuer'] = self.cached_issuer.jsonld_id if use_canonical_id else add_obi_version_ifneeded(
-                self.cached_issuer.jsonld_id, obi_version)
+            json["id"] = (
+                self.jsonld_id
+                if use_canonical_id
+                else add_obi_version_ifneeded(self.jsonld_id, obi_version)
+            )
+            json["issuer"] = (
+                self.cached_issuer.jsonld_id
+                if use_canonical_id
+                else add_obi_version_ifneeded(self.cached_issuer.jsonld_id, obi_version)
+            )
         if signed:
-            json['id'] = self.get_url_with_public_key(public_key_issuer)
-            json['issuer'] = self.issuer.get_url_with_public_key(public_key_issuer)
+            json["id"] = self.get_url_with_public_key(public_key_issuer)
+            json["issuer"] = self.issuer.get_url_with_public_key(public_key_issuer)
 
         # image
         if self.image:
-            image_url = OriginSetting.HTTP + reverse('badgeclass_image', kwargs={'entity_id': self.entity_id})
-            json['image'] = image_url
+            image_url = OriginSetting.HTTP + reverse(
+                "badgeclass_image", kwargs={"entity_id": self.entity_id}
+            )
+            json["image"] = image_url
             if self.original_json:
                 original_json = self.get_original_json()
                 if original_json is not None:
-                    image_info = original_json.get('image', None)
+                    image_info = original_json.get("image", None)
                     if isinstance(image_info, dict):
-                        json['image'] = image_info
-                        json['image']['id'] = image_url
+                        json["image"] = image_info
+                        json["image"]["id"] = image_url
 
         # criteria
         json["criteria"] = {}
         if self.criteria_text:
-            json['criteria']['narrative'] = self.criteria_text
+            json["criteria"]["narrative"] = self.criteria_text
 
         # source_url
         if self.source_url:
-            if obi_version == '1_1':
+            if obi_version == "1_1":
                 json["source_url"] = self.source_url
                 json["hosted_url"] = OriginSetting.HTTP + self.get_absolute_url()
-            elif obi_version == '2_0':
+            elif obi_version == "2_0":
                 json["sourceUrl"] = self.source_url
                 json["hostedUrl"] = OriginSetting.HTTP + self.get_absolute_url()
 
         # alignment / tags
-        if obi_version == '2_0':
-            json['alignment'] = [a.get_json(obi_version=obi_version) for a in self.cached_alignments()]
-            json['tags'] = list(t.name for t in self.cached_tags())
+        if obi_version == "2_0":
+            json["alignment"] = [
+                a.get_json(obi_version=obi_version) for a in self.cached_alignments()
+            ]
+            json["tags"] = list(t.name for t in self.cached_tags())
 
         # extensions
         if len(self.cached_extensions()) > 0:
@@ -872,81 +1110,127 @@ class BadgeClass(EntityUserProvisionmentMixin,
     def json(self):
         return self.get_json()
 
-    def get_filtered_json(self, excluded_fields=(
-            '@context', 'id', 'type', 'name', 'description', 'image', 'criteria', 'issuer')):
-        return super(BadgeClass, self).get_filtered_json(excluded_fields=excluded_fields)
+    def get_filtered_json(
+        self,
+        excluded_fields=(
+            "@context",
+            "id",
+            "type",
+            "name",
+            "description",
+            "image",
+            "criteria",
+            "issuer",
+        ),
+    ):
+        return super(BadgeClass, self).get_filtered_json(
+            excluded_fields=excluded_fields
+        )
 
     @property
     def cached_badgrapp(self):
         return self.cached_issuer.cached_badgrapp
 
 
-class BadgeInstance(BaseAuditedModel,
-                    ImageUrlGetterMixin,
-                    BaseVersionedEntity,
-                    BaseOpenBadgeObjectModel):
-    entity_class_name = 'Assertion'
+class BadgeInstance(
+    BaseAuditedModel, ImageUrlGetterMixin, BaseVersionedEntity, BaseOpenBadgeObjectModel
+):
+    entity_class_name = "Assertion"
 
     issued_on = models.DateTimeField(blank=False, null=False, default=timezone.now)
 
-    public_key_issuer = models.ForeignKey('signing.PublicKeyIssuer', on_delete=models.PROTECT, null=True, default=None)
+    public_key_issuer = models.ForeignKey(
+        "signing.PublicKeyIssuer", on_delete=models.PROTECT, null=True, default=None
+    )
 
-    identifier = models.CharField(max_length=255, null=True, default=None)  # the uuid used to ID signed assertions
+    identifier = models.CharField(
+        max_length=255, null=True, default=None
+    )  # the uuid used to ID signed assertions
 
-    badgeclass = models.ForeignKey(BadgeClass, blank=False, null=False, on_delete=models.PROTECT,
-                                   related_name='badgeinstances')
-    issuer = models.ForeignKey(Issuer, on_delete=models.PROTECT, blank=False, null=False)
-    user = models.ForeignKey('badgeuser.BadgeUser', blank=True, null=True, on_delete=models.CASCADE)
+    badgeclass = models.ForeignKey(
+        BadgeClass,
+        blank=False,
+        null=False,
+        on_delete=models.PROTECT,
+        related_name="badgeinstances",
+    )
+    issuer = models.ForeignKey(
+        Issuer, on_delete=models.PROTECT, blank=False, null=False
+    )
+    user = models.ForeignKey(
+        "badgeuser.BadgeUser", blank=True, null=True, on_delete=models.CASCADE
+    )
 
-    RECIPIENT_TYPE_EMAIL = 'email'
-    RECIPIENT_TYPE_ID = 'openBadgeId'
-    RECIPIENT_TYPE_TELEPHONE = 'telephone'
-    RECIPIENT_TYPE_URL = 'url'
-    RECIPIENT_TYPE_EDUID = 'id'
+    RECIPIENT_TYPE_EMAIL = "email"
+    RECIPIENT_TYPE_ID = "openBadgeId"
+    RECIPIENT_TYPE_TELEPHONE = "telephone"
+    RECIPIENT_TYPE_URL = "url"
+    RECIPIENT_TYPE_EDUID = "id"
     RECIPIENT_TYPE_CHOICES = (
-        (RECIPIENT_TYPE_EMAIL, 'email'),
-        (RECIPIENT_TYPE_ID, 'openBadgeId'),
-        (RECIPIENT_TYPE_TELEPHONE, 'telephone'),
-        (RECIPIENT_TYPE_URL, 'url'),
-        (RECIPIENT_TYPE_EDUID, 'id'),
+        (RECIPIENT_TYPE_EMAIL, "email"),
+        (RECIPIENT_TYPE_ID, "openBadgeId"),
+        (RECIPIENT_TYPE_TELEPHONE, "telephone"),
+        (RECIPIENT_TYPE_URL, "url"),
+        (RECIPIENT_TYPE_EDUID, "id"),
     )
-    recipient_type = models.CharField(max_length=255, choices=RECIPIENT_TYPE_CHOICES, default=RECIPIENT_TYPE_EDUID,
-                                      blank=False, null=False)
+    recipient_type = models.CharField(
+        max_length=255,
+        choices=RECIPIENT_TYPE_CHOICES,
+        default=RECIPIENT_TYPE_EDUID,
+        blank=False,
+        null=False,
+    )
 
-    AWARD_TYPE_REQUESTED = 'requested'
-    AWARD_TYPE_DIRECT_AWARD = 'direct_award'
+    AWARD_TYPE_REQUESTED = "requested"
+    AWARD_TYPE_DIRECT_AWARD = "direct_award"
     AWARD_TYPE_CHOICES = (
-        (AWARD_TYPE_REQUESTED, 'requested'),
-        (AWARD_TYPE_DIRECT_AWARD, 'direct_award'),
+        (AWARD_TYPE_REQUESTED, "requested"),
+        (AWARD_TYPE_DIRECT_AWARD, "direct_award"),
     )
-    award_type = models.CharField(max_length=255, choices=AWARD_TYPE_CHOICES, default=AWARD_TYPE_REQUESTED,
-                                  blank=False, null=False)
+    award_type = models.CharField(
+        max_length=255,
+        choices=AWARD_TYPE_CHOICES,
+        default=AWARD_TYPE_REQUESTED,
+        blank=False,
+        null=False,
+    )
 
-    direct_award_bundle = models.ForeignKey('directaward.DirectAwardBundle', blank=True, null=True,
-                                            on_delete=models.PROTECT)
+    direct_award_bundle = models.ForeignKey(
+        "directaward.DirectAwardBundle", blank=True, null=True, on_delete=models.PROTECT
+    )
 
-    recipient_identifier = models.CharField(max_length=512, blank=False, null=False, db_index=True)
+    recipient_identifier = models.CharField(
+        max_length=512, blank=False, null=False, db_index=True
+    )
 
-    image = models.FileField(upload_to='uploads/badges', blank=True, null=True, db_index=True)
+    image = models.FileField(
+        upload_to="uploads/badges", blank=True, null=True, db_index=True
+    )
 
     revoked = models.BooleanField(default=False)
-    revocation_reason = models.CharField(max_length=255, blank=True, null=True, default=None)
+    revocation_reason = models.CharField(
+        max_length=255, blank=True, null=True, default=None
+    )
 
     expires_at = models.DateTimeField(blank=True, null=True, default=None)
 
-    ACCEPTANCE_UNACCEPTED = 'Unaccepted'
-    ACCEPTANCE_ACCEPTED = 'Accepted'
-    ACCEPTANCE_REJECTED = 'Rejected'
+    ACCEPTANCE_UNACCEPTED = "Unaccepted"
+    ACCEPTANCE_ACCEPTED = "Accepted"
+    ACCEPTANCE_REJECTED = "Rejected"
     ACCEPTANCE_CHOICES = (
-        (ACCEPTANCE_UNACCEPTED, 'Unaccepted'),
-        (ACCEPTANCE_ACCEPTED, 'Accepted'),
-        (ACCEPTANCE_REJECTED, 'Rejected'),
+        (ACCEPTANCE_UNACCEPTED, "Unaccepted"),
+        (ACCEPTANCE_ACCEPTED, "Accepted"),
+        (ACCEPTANCE_REJECTED, "Rejected"),
     )
-    acceptance = models.CharField(max_length=254, choices=ACCEPTANCE_CHOICES, default=ACCEPTANCE_UNACCEPTED)
+    acceptance = models.CharField(
+        max_length=254, choices=ACCEPTANCE_CHOICES, default=ACCEPTANCE_UNACCEPTED
+    )
     narrative = models.TextField(blank=True, null=True, default=None)
 
     hashed = models.BooleanField(default=True)
-    salt = models.CharField(max_length=254, blank=True, null=True, default=None, db_index=True)
+    salt = models.CharField(
+        max_length=254, blank=True, null=True, default=None, db_index=True
+    )
 
     old_json = JSONField()
 
@@ -960,22 +1244,22 @@ class BadgeInstance(BaseAuditedModel,
     cached = CacheModelManager()
 
     class Meta:
-        index_together = (
-            ('recipient_identifier', 'badgeclass', 'revoked'),
-        )
+        index_together = (("recipient_identifier", "badgeclass", "revoked"),)
 
     def validate(self):
-        data = {'profile': {'id': self.recipient_identifier}, 'data': self.get_json()}
-        response = requests.post(json=data,
-                                 url=urljoin(settings.VALIDATOR_URL, 'results'),
-                                 headers={'Accept': 'application/json'})
+        data = {"profile": {"id": self.recipient_identifier}, "data": self.get_json()}
+        response = requests.post(
+            json=data,
+            url=urljoin(settings.VALIDATOR_URL, "results"),
+            headers={"Accept": "application/json"},
+        )
         return response.json()
 
     @property
     def extended_json(self):
         extended_json = self.json
-        extended_json['badge'] = self.badgeclass.json
-        extended_json['badge']['issuer'] = self.issuer.json
+        extended_json["badge"] = self.badgeclass.json
+        extended_json["badge"]["issuer"] = self.issuer.json
 
         return extended_json
 
@@ -997,7 +1281,7 @@ class BadgeInstance(BaseAuditedModel,
         return self.badgeinstanceevidence_set.all()
 
     def get_absolute_url(self):
-        return reverse('badgeinstance_json', kwargs={'entity_id': self.entity_id})
+        return reverse("badgeinstance_json", kwargs={"entity_id": self.entity_id})
 
     @property
     def student_url(self):
@@ -1062,12 +1346,18 @@ class BadgeInstance(BaseAuditedModel,
             if not self.image:
                 badgeclass_name, ext = os.path.splitext(self.badgeclass.image.file.name)
                 new_image = io.BytesIO()
-                bake(image_file=self.cached_badgeclass.image.file,
-                     assertion_json_string=json_dumps(self.get_json(obi_version=UNVERSIONED_BAKED_VERSION), indent=2),
-                     output_file=new_image)
-                self.image.save(name='assertion-{id}{ext}'.format(id=self.entity_id, ext=ext),
-                                content=ContentFile(new_image.read()),
-                                save=False)
+                bake(
+                    image_file=self.cached_badgeclass.image.file,
+                    assertion_json_string=json_dumps(
+                        self.get_json(obi_version=UNVERSIONED_BAKED_VERSION), indent=2
+                    ),
+                    output_file=new_image,
+                )
+                self.image.save(
+                    name="assertion-{id}{ext}".format(id=self.entity_id, ext=ext),
+                    content=ContentFile(new_image.read()),
+                    save=False,
+                )
 
             # TODO can this be permanently removed
             # try:
@@ -1084,10 +1374,16 @@ class BadgeInstance(BaseAuditedModel,
             self.revocation_reason = None
 
         super(BadgeInstance, self).save(*args, **kwargs)
-        self.badgeclass.remove_cached_data(['cached_assertions'])
-        self.user.remove_cached_data(['cached_badgeinstances'])
+        self.badgeclass.remove_cached_data(["cached_assertions"])
+        self.user.remove_cached_data(["cached_badgeinstances"])
 
-    def rebake(self, obi_version=CURRENT_OBI_VERSION, save=True, signature=None, replace_image=False):
+    def rebake(
+        self,
+        obi_version=CURRENT_OBI_VERSION,
+        save=True,
+        signature=None,
+        replace_image=False,
+    ):
         if self.source_url:
             # dont rebake imported assertions
             return
@@ -1096,14 +1392,16 @@ class BadgeInstance(BaseAuditedModel,
         if not signature:
             bake(
                 image_file=self.cached_badgeclass.image.file,
-                assertion_json_string=json_dumps(self.get_json(obi_version=obi_version), indent=2),
-                output_file=new_image
+                assertion_json_string=json_dumps(
+                    self.get_json(obi_version=obi_version), indent=2
+                ),
+                output_file=new_image,
             )
         else:
             bake(
                 image_file=self.cached_badgeclass.image.file,
                 assertion_json_string=signature,
-                output_file=new_image
+                output_file=new_image,
             )
 
         new_name = default_storage.save(self.image.name, ContentFile(new_image.read()))
@@ -1121,7 +1419,7 @@ class BadgeInstance(BaseAuditedModel,
         if self.user:
             self.user.publish()
 
-        self.publish_by('entity_id', 'revoked')
+        self.publish_by("entity_id", "revoked")
 
     def delete(self, *args, **kwargs):
         badgeclass = self.badgeclass
@@ -1129,7 +1427,7 @@ class BadgeInstance(BaseAuditedModel,
         badgeclass.publish()
         if self.user:
             self.user.publish()
-        self.publish_delete('entity_id', 'revoked')
+        self.publish_delete("entity_id", "revoked")
 
     def revoke(self, revocation_reason):
         if self.revoked:
@@ -1144,15 +1442,18 @@ class BadgeInstance(BaseAuditedModel,
         self.save()
 
         html_message = EmailMessageMaker.create_assertion_revoked_email(self)
-        send_mail(subject='eduBadge has been revoked',
-                  message=None,
-                  html_message=html_message,
-                  recipient_list=[self.user.email])
+        send_mail(
+            subject="eduBadge has been revoked",
+            message=None,
+            html_message=html_message,
+            recipient_list=[self.user.email],
+        )
 
         # remove BadgeObjectiveAwards from badgebook if needed
-        if apps.is_installed('badgebook'):
+        if apps.is_installed("badgebook"):
             try:
                 from badgebook.models import BadgeObjectiveAward, LmsCourseInfo
+
                 try:
                     award = BadgeObjectiveAward.cached.get(badge_instance_id=self.id)
                 except BadgeObjectiveAward.DoesNotExist:
@@ -1168,118 +1469,163 @@ class BadgeInstance(BaseAuditedModel,
     def get_hashed_identity(self):
         return generate_sha256_hashstring(self.recipient_identifier.lower(), self.salt)
 
-    def get_json(self, obi_version=CURRENT_OBI_VERSION, expand_badgeclass=False, expand_issuer=False, expand_user=False,
-                 include_extra=True, use_canonical_id=False, signed=False, public_key_issuer=None):
-
+    def get_json(
+        self,
+        obi_version=CURRENT_OBI_VERSION,
+        expand_badgeclass=False,
+        expand_issuer=False,
+        expand_user=False,
+        include_extra=True,
+        use_canonical_id=False,
+        signed=False,
+        public_key_issuer=None,
+    ):
         if signed:
             if expand_issuer != True or expand_badgeclass != True:
-                raise ValueError('Must expand issuer and badgeclass if signed is set to true.')
+                raise ValueError(
+                    "Must expand issuer and badgeclass if signed is set to true."
+                )
             if not public_key_issuer:
-                raise ValueError('Must add a public key issuer object (address) if signed is set to true.')
+                raise ValueError(
+                    "Must add a public key issuer object (address) if signed is set to true."
+                )
             if public_key_issuer.issuer != self.issuer:
-                raise ValueError('Public key issuer objects does not match assertion issuer')
+                raise ValueError(
+                    "Public key issuer objects does not match assertion issuer"
+                )
 
         obi_version, context_iri = get_obi_context(obi_version)
 
-        json = OrderedDict([
-            ('@context', context_iri),
-            ('type', 'Assertion'),
-        ])
+        json = OrderedDict(
+            [
+                ("@context", context_iri),
+                ("type", "Assertion"),
+            ]
+        )
 
         badge_class = self.cached_badgeclass
         if signed:
-            json['id'] = self.identifier
+            json["id"] = self.identifier
         else:
-            json['id'] = add_obi_version_ifneeded(self.jsonld_id, obi_version)
-            json['badge'] = add_obi_version_ifneeded(badge_class.jsonld_id, obi_version)
+            json["id"] = add_obi_version_ifneeded(self.jsonld_id, obi_version)
+            json["badge"] = add_obi_version_ifneeded(badge_class.jsonld_id, obi_version)
 
-        image_url = OriginSetting.HTTP + reverse('badgeinstance_image', kwargs={'entity_id': self.entity_id})
-        json['image'] = image_url
+        image_url = OriginSetting.HTTP + reverse(
+            "badgeinstance_image", kwargs={"entity_id": self.entity_id}
+        )
+        json["image"] = image_url
         if self.original_json:
-            image_info = self.get_original_json().get('image', None)
+            image_info = self.get_original_json().get("image", None)
             if isinstance(image_info, dict):
-                json['image'] = image_info
-                json['image']['id'] = image_url
+                json["image"] = image_info
+                json["image"]["id"] = image_url
 
         if expand_badgeclass:
-            json['badge'] = badge_class.get_json(obi_version=obi_version, include_extra=include_extra)
+            json["badge"] = badge_class.get_json(
+                obi_version=obi_version, include_extra=include_extra
+            )
             if signed:
-                json['badge']['id'] = badge_class.get_url_with_public_key(public_key_issuer)
+                json["badge"]["id"] = badge_class.get_url_with_public_key(
+                    public_key_issuer
+                )
             if expand_issuer:
-                json['badge']['issuer'] = self.cached_issuer.get_json(obi_version=obi_version,
-                                                                      include_extra=include_extra,
-                                                                      signed=signed,
-                                                                      expand_public_key=False,
-                                                                      public_key_issuer=public_key_issuer,
-                                                                      expand_institution=True)
+                json["badge"]["issuer"] = self.cached_issuer.get_json(
+                    obi_version=obi_version,
+                    include_extra=include_extra,
+                    signed=signed,
+                    expand_public_key=False,
+                    public_key_issuer=public_key_issuer,
+                    expand_institution=True,
+                )
             if expand_user:
-                json['badge']['user'] = self.user.get_full_name()
+                json["badge"]["user"] = self.user.get_full_name()
                 from public.public_api import BadgeClassJson
-                json['badge']['endorsements'] = [BadgeClassJson.endorsement_to_json(bc) for bc in
-                                                 badge_class.cached_endorsements()]
+
+                json["badge"]["endorsements"] = [
+                    BadgeClassJson.endorsement_to_json(bc)
+                    for bc in badge_class.cached_endorsements()
+                ]
 
         if self.revoked:
-            return OrderedDict([
-                ('@context', context_iri),
-                ('type', 'Assertion'),
-                ('id', self.jsonld_id if use_canonical_id else add_obi_version_ifneeded(self.jsonld_id, obi_version)),
-                ('revoked', self.revoked),
-                ('revocationReason', self.revocation_reason if self.revocation_reason else "")
-            ])
+            return OrderedDict(
+                [
+                    ("@context", context_iri),
+                    ("type", "Assertion"),
+                    (
+                        "id",
+                        self.jsonld_id
+                        if use_canonical_id
+                        else add_obi_version_ifneeded(self.jsonld_id, obi_version),
+                    ),
+                    ("revoked", self.revoked),
+                    (
+                        "revocationReason",
+                        self.revocation_reason if self.revocation_reason else "",
+                    ),
+                ]
+            )
 
-        if obi_version == '1_1':
+        if obi_version == "1_1":
             json["uid"] = self.entity_id
             json["verify"] = {
-                "url": self.public_url if use_canonical_id else add_obi_version_ifneeded(self.public_url, obi_version),
-                "type": "hosted"
+                "url": self.public_url
+                if use_canonical_id
+                else add_obi_version_ifneeded(self.public_url, obi_version),
+                "type": "hosted",
             }
-        elif obi_version == '2_0':
+        elif obi_version == "2_0":
             if signed:
                 json["verification"] = {
                     "type": "SignedBadge",
-                    "creator": public_key_issuer.public_url
+                    "creator": public_key_issuer.public_url,
                 }
             else:
-                json["verification"] = {
-                    "type": "HostedBadge"
-                }
+                json["verification"] = {"type": "HostedBadge"}
 
         # evidence
-        json['evidence'] = [e.get_json(obi_version) for e in self.cached_evidence()] if self.include_evidence else []
+        json["evidence"] = (
+            [e.get_json(obi_version) for e in self.cached_evidence()]
+            if self.include_evidence
+            else []
+        )
 
         # narrative
-        if self.narrative and obi_version == '2_0':
-            json['narrative'] = self.narrative
+        if self.narrative and obi_version == "2_0":
+            json["narrative"] = self.narrative
 
         # source url
         if self.source_url:
-            if obi_version == '1_1':
+            if obi_version == "1_1":
                 json["source_url"] = self.source_url
                 json["hosted_url"] = OriginSetting.HTTP + self.get_absolute_url()
-            elif obi_version == '2_0':
+            elif obi_version == "2_0":
                 json["sourceUrl"] = self.source_url
                 json["hostedUrl"] = OriginSetting.HTTP + self.get_absolute_url()
 
         # issuedOn / expires
-        json['issuedOn'] = self.issued_on.isoformat()
-        json['updatedAt'] = self.updated_at.isoformat() if self.updated_at else self.created_at.isoformat()
+        json["issuedOn"] = self.issued_on.isoformat()
+        json["updatedAt"] = (
+            self.updated_at.isoformat()
+            if self.updated_at
+            else self.created_at.isoformat()
+        )
         if self.expires_at:
-            json['expires'] = self.expires_at.isoformat()
+            json["expires"] = self.expires_at.isoformat()
 
         # recipient
         if self.hashed:
-            json['recipient'] = {
+            json["recipient"] = {
                 "hashed": True,
                 "type": self.recipient_type,
-                "identity": self.get_hashed_identity()
+                "identity": self.get_hashed_identity(),
             }
             if self.salt:
-                json['recipient']['salt'] = self.salt
+                json["recipient"]["salt"] = self.salt
         else:
-            json['recipient'] = {
+            json["recipient"] = {
                 "hashed": False,
                 "type": self.recipient_type,
-                "identity": self.recipient_identifier
+                "identity": self.recipient_identifier,
             }
 
         # extensions
@@ -1303,11 +1649,26 @@ class BadgeInstance(BaseAuditedModel,
     def json(self):
         return self.get_json()
 
-    def get_filtered_json(self, excluded_fields=(
-            '@context', 'id', 'type', 'uid', 'recipient', 'badge', 'issuedOn', 'image', 'revoked', 'revocationReason',
-            'verify',
-            'verification')):
-        return super(BadgeInstance, self).get_filtered_json(excluded_fields=excluded_fields)
+    def get_filtered_json(
+        self,
+        excluded_fields=(
+            "@context",
+            "id",
+            "type",
+            "uid",
+            "recipient",
+            "badge",
+            "issuedOn",
+            "image",
+            "revoked",
+            "revocationReason",
+            "verify",
+            "verification",
+        ),
+    ):
+        return super(BadgeInstance, self).get_filtered_json(
+            excluded_fields=excluded_fields
+        )
 
     @property
     def cached_badgrapp(self):
@@ -1319,26 +1680,34 @@ class BadgeInstance(BaseAuditedModel,
             return self.image.url
 
         try:
-            baked_image = BadgeInstanceBakedImage.cached.get(badgeinstance=self, obi_version=obi_version)
+            baked_image = BadgeInstanceBakedImage.cached.get(
+                badgeinstance=self, obi_version=obi_version
+            )
         except BadgeInstanceBakedImage.DoesNotExist:
             # rebake
-            baked_image = BadgeInstanceBakedImage(badgeinstance=self, obi_version=obi_version)
+            baked_image = BadgeInstanceBakedImage(
+                badgeinstance=self, obi_version=obi_version
+            )
 
             json_to_bake = self.get_json(
                 obi_version=obi_version,
                 expand_issuer=True,
                 expand_badgeclass=True,
-                include_extra=True
+                include_extra=True,
             )
             badgeclass_name, ext = os.path.splitext(self.badgeclass.image.file.name)
             new_image = io.StringIO()
-            bake(image_file=self.cached_badgeclass.image.file,
-                 assertion_json_string=json_dumps(json_to_bake, indent=2),
-                 output_file=new_image)
+            bake(
+                image_file=self.cached_badgeclass.image.file,
+                assertion_json_string=json_dumps(json_to_bake, indent=2),
+                output_file=new_image,
+            )
             baked_image.image.save(
-                name='assertion-{id}-{version}{ext}'.format(id=self.entity_id, ext=ext, version=obi_version),
+                name="assertion-{id}-{version}{ext}".format(
+                    id=self.entity_id, ext=ext, version=obi_version
+                ),
                 content=ContentFile(new_image.read()),
-                save=False
+                save=False,
             )
             baked_image.save()
 
@@ -1346,8 +1715,10 @@ class BadgeInstance(BaseAuditedModel,
 
 
 class BadgeInstanceEvidence(OriginalJsonMixin, CacheModel):
-    badgeinstance = models.ForeignKey('issuer.BadgeInstance', on_delete=models.CASCADE)
-    evidence_url = models.CharField(max_length=2083, blank=True, null=True, default=None)
+    badgeinstance = models.ForeignKey("issuer.BadgeInstance", on_delete=models.CASCADE)
+    evidence_url = models.CharField(
+        max_length=2083, blank=True, null=True, default=None
+    )
     narrative = models.TextField(blank=True, null=True, default=None)
     name = models.CharField(max_length=255, blank=True, null=True, default=None)
     description = models.TextField(blank=True, null=True, default=None)
@@ -1362,43 +1733,44 @@ class BadgeInstanceEvidence(OriginalJsonMixin, CacheModel):
         json = OrderedDict()
         if include_context:
             obi_version, context_iri = get_obi_context(obi_version)
-            json['@context'] = context_iri
+            json["@context"] = context_iri
 
-        json['type'] = 'Evidence'
+        json["type"] = "Evidence"
         if self.evidence_url:
-            json['id'] = self.evidence_url
+            json["id"] = self.evidence_url
         if self.narrative:
-            json['narrative'] = self.narrative
+            json["narrative"] = self.narrative
         if self.name:
-            json['name'] = self.name
+            json["name"] = self.name
         if self.description:
-            json['description'] = self.description
+            json["description"] = self.description
         return json
 
 
 def _baked_badge_instance_filename_generator(instance, filename):
     return "baked/{version}/{filename}".format(
-        version=instance.obi_version,
-        filename=filename
+        version=instance.obi_version, filename=filename
     )
 
 
 class BadgeInstanceBakedImage(CacheModel):
-    badgeinstance = models.ForeignKey('issuer.BadgeInstance', on_delete=models.CASCADE)
+    badgeinstance = models.ForeignKey("issuer.BadgeInstance", on_delete=models.CASCADE)
     obi_version = models.CharField(max_length=254)
-    image = models.FileField(upload_to=_baked_badge_instance_filename_generator, blank=True)
+    image = models.FileField(
+        upload_to=_baked_badge_instance_filename_generator, blank=True
+    )
 
     def publish(self):
-        self.publish_by('badgeinstance', 'obi_version')
+        self.publish_by("badgeinstance", "obi_version")
         return super(BadgeInstanceBakedImage, self).publish()
 
     def delete(self, *args, **kwargs):
-        self.publish_delete('badgeinstance', 'obi_version')
+        self.publish_delete("badgeinstance", "obi_version")
         return super(BadgeInstanceBakedImage, self).delete(*args, **kwargs)
 
 
 class BadgeClassAlignment(OriginalJsonMixin, CacheModel):
-    badgeclass = models.ForeignKey('issuer.BadgeClass', on_delete=models.CASCADE)
+    badgeclass = models.ForeignKey("issuer.BadgeClass", on_delete=models.CASCADE)
     target_name = models.TextField()
     target_url = models.CharField(max_length=2083, blank=True, null=True, default=None)
     target_description = models.TextField(blank=True, null=True, default=None)
@@ -1417,22 +1789,22 @@ class BadgeClassAlignment(OriginalJsonMixin, CacheModel):
         json = OrderedDict()
         if include_context:
             obi_version, context_iri = get_obi_context(obi_version)
-            json['@context'] = context_iri
+            json["@context"] = context_iri
 
-        json['targetName'] = self.target_name
-        json['targetUrl'] = self.target_url
+        json["targetName"] = self.target_name
+        json["targetUrl"] = self.target_url
         if self.target_description:
-            json['targetDescription'] = self.target_description
+            json["targetDescription"] = self.target_description
         if self.target_framework:
-            json['targetFramework'] = self.target_framework
+            json["targetFramework"] = self.target_framework
         if self.target_code:
-            json['targetCode'] = self.target_code
+            json["targetCode"] = self.target_code
 
         return json
 
 
 class IssuerExtension(BaseOpenBadgeExtension):
-    issuer = models.ForeignKey('issuer.Issuer', on_delete=models.CASCADE)
+    issuer = models.ForeignKey("issuer.Issuer", on_delete=models.CASCADE)
 
     def publish(self):
         super(IssuerExtension, self).publish()
@@ -1444,7 +1816,7 @@ class IssuerExtension(BaseOpenBadgeExtension):
 
 
 class BadgeClassExtension(BaseOpenBadgeExtension):
-    badgeclass = models.ForeignKey('issuer.BadgeClass', on_delete=models.CASCADE)
+    badgeclass = models.ForeignKey("issuer.BadgeClass", on_delete=models.CASCADE)
 
     def publish(self):
         super(BadgeClassExtension, self).publish()
@@ -1456,7 +1828,7 @@ class BadgeClassExtension(BaseOpenBadgeExtension):
 
 
 class BadgeInstanceExtension(BaseOpenBadgeExtension):
-    badgeinstance = models.ForeignKey('issuer.BadgeInstance', on_delete=models.CASCADE)
+    badgeinstance = models.ForeignKey("issuer.BadgeInstance", on_delete=models.CASCADE)
 
     def publish(self):
         super(BadgeInstanceExtension, self).publish()
@@ -1470,15 +1842,23 @@ class BadgeInstanceExtension(BaseOpenBadgeExtension):
 class BadgeInstanceCollection(BaseAuditedModel, BaseVersionedEntity, CacheModel):
     name = models.CharField(max_length=255, blank=False, null=False, default=None)
     description = models.TextField(blank=True, null=True, default=None)
-    user = models.ForeignKey('badgeuser.BadgeUser', blank=True, null=True, on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        "badgeuser.BadgeUser", blank=True, null=True, on_delete=models.CASCADE
+    )
     public = models.BooleanField(default=False)
-    badge_instances = models.ManyToManyField('issuer.BadgeInstance', blank=True)
+    badge_instances = models.ManyToManyField("issuer.BadgeInstance", blank=True)
 
     def validate_unique(self, exclude=None):
-        if self.__class__.objects.filter(name=self.name, user=self.user).exclude(pk=self.pk).exists():
-            raise BadgrValidationFieldError('name',
-                                            "BadgeInstanceCollection with this name already exists for this user.",
-                                            936)
+        if (
+            self.__class__.objects.filter(name=self.name, user=self.user)
+            .exclude(pk=self.pk)
+            .exists()
+        ):
+            raise BadgrValidationFieldError(
+                "name",
+                "BadgeInstanceCollection with this name already exists for this user.",
+                936,
+            )
         return super(BadgeInstanceCollection, self).validate_unique(exclude=exclude)
 
     def save(self, *args, **kwargs):

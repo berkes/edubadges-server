@@ -14,7 +14,8 @@ class PermissionedRelationshipBase(BaseVersionedEntity):
     """
     Abstract base class used for inheritance in all the Staff Many2Many relationship models
     """
-    user = models.ForeignKey('badgeuser.BadgeUser', on_delete=models.CASCADE)
+
+    user = models.ForeignKey("badgeuser.BadgeUser", on_delete=models.CASCADE)
     may_create = models.BooleanField(default=False)
     may_read = models.BooleanField(default=False)
     may_update = models.BooleanField(default=False)
@@ -29,39 +30,56 @@ class PermissionedRelationshipBase(BaseVersionedEntity):
     @classmethod
     def empty_permissions(cls):
         """convenience class method to represent NO permissions"""
-        return {'may_create': False,
-                'may_read': False,
-                'may_update': False,
-                'may_delete': False,
-                'may_award': False,
-                'may_sign': False,
-                'may_administrate_users': False}
+        return {
+            "may_create": False,
+            "may_read": False,
+            "may_update": False,
+            "may_delete": False,
+            "may_award": False,
+            "may_sign": False,
+            "may_administrate_users": False,
+        }
 
     @classmethod
     def full_permissions(cls):
         """convenience class method to represent FULL permissions"""
-        return {'may_create': True,
-                'may_read': True,
-                'may_update': True,
-                'may_delete': True,
-                'may_award': True,
-                'may_sign': True,
-                'may_administrate_users': True}
+        return {
+            "may_create": True,
+            "may_read": True,
+            "may_update": True,
+            "may_delete": True,
+            "may_award": True,
+            "may_sign": True,
+            "may_administrate_users": True,
+        }
 
     @property
     def permissions(self):
-        return model_to_dict(self, fields = ['may_create',
-                                             'may_read',
-                                             'may_update',
-                                             'may_delete',
-                                             'may_award',
-                                             'may_sign',
-                                             'may_administrate_users'])
+        return model_to_dict(
+            self,
+            fields=[
+                "may_create",
+                "may_read",
+                "may_update",
+                "may_delete",
+                "may_award",
+                "may_sign",
+                "may_administrate_users",
+            ],
+        )
+
     @property
     def has_a_permission(self):
         """check to see if at least one permission set to True"""
-        return self.may_create or self.may_read or self.may_update or self.may_delete \
-               or self.may_award or self.may_sign or self.may_administrate_users
+        return (
+            self.may_create
+            or self.may_read
+            or self.may_update
+            or self.may_delete
+            or self.may_award
+            or self.may_sign
+            or self.may_administrate_users
+        )
 
     def has_permissions(self, permissions):
         """
@@ -83,54 +101,76 @@ class PermissionedRelationshipBase(BaseVersionedEntity):
 
     def _empty_user_cached_staff(self):
         object_class_name = self.object.__class__.__name__.lower()
-        if object_class_name == 'institution':
-            self.user.remove_cached_data(['cached_institution_staff'])
+        if object_class_name == "institution":
+            self.user.remove_cached_data(["cached_institution_staff"])
         else:
-            self.user.remove_cached_data(['cached_{}_staffs'.format(object_class_name)])
+            self.user.remove_cached_data(["cached_{}_staffs".format(object_class_name)])
 
     def _user_has_other_membership_in_branch(self, user):
         """check to see if given user already has another staff membership in the current branch"""
-        user_staff_memberships_in_branch = self.object.get_all_staff_memberships_in_current_branch(user,
-                                                                                                   check_parents=True,
-                                                                                                   check_children=False)
-        return bool([staff for staff in user_staff_memberships_in_branch if staff.user == user and staff != self])
+        user_staff_memberships_in_branch = (
+            self.object.get_all_staff_memberships_in_current_branch(
+                user, check_parents=True, check_children=False
+            )
+        )
+        return bool(
+            [
+                staff
+                for staff in user_staff_memberships_in_branch
+                if staff.user == user and staff != self
+            ]
+        )
 
     def save(self, *args, **kwargs):
         if self._user_has_other_membership_in_branch(self.user):
-            raise serializers.ValidationError('Cannot save staff membership, there is a conflicting staff membership.')
+            raise serializers.ValidationError(
+                "Cannot save staff membership, there is a conflicting staff membership."
+            )
         super(PermissionedRelationshipBase, self).save()
-        self.object.remove_cached_data(['cached_staff'])
+        self.object.remove_cached_data(["cached_staff"])
         self._empty_user_cached_staff()
 
     def delete(self, *args, **kwargs):
-        publish_object = kwargs.pop('publish_object', True)
+        publish_object = kwargs.pop("publish_object", True)
         super(PermissionedRelationshipBase, self).delete()
         if publish_object:
-            self.object.remove_cached_data(['cached_staff'])  # update permissions instantly
+            self.object.remove_cached_data(
+                ["cached_staff"]
+            )  # update permissions instantly
         self._empty_user_cached_staff()
 
     @property
     def cached_user(self):
         from badgeuser.models import BadgeUser
+
         return BadgeUser.cached.get(pk=self.user_id)
 
     @property
     def staff_page_url(self):
         entity = self.object
-        return urllib.parse.urljoin(settings.UI_URL, 'manage/'+
-                                    entity.__class__.__name__+'/'+
-                                    entity.entity_id+'/user-management')
+        return urllib.parse.urljoin(
+            settings.UI_URL,
+            "manage/"
+            + entity.__class__.__name__
+            + "/"
+            + entity.entity_id
+            + "/user-management",
+        )
 
 
 class InstitutionStaff(PermissionedRelationshipBase):
     """
     Many2Many realtionship between Institution and users, with permissions added to the relationship
     """
-    institution = models.ForeignKey('institution.Institution', on_delete=models.CASCADE)
+
+    institution = models.ForeignKey("institution.Institution", on_delete=models.CASCADE)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['user', 'institution'], name='unique_institution_staff_membership')
+            models.UniqueConstraint(
+                fields=["user", "institution"],
+                name="unique_institution_staff_membership",
+            )
         ]
 
     @property
@@ -138,28 +178,36 @@ class InstitutionStaff(PermissionedRelationshipBase):
         return self.institution
 
     def _is_last_staff_membership(self):
-        there_are_other_staffs = bool(InstitutionStaff.objects.filter(institution=self.institution,
-                                                                      may_administrate_users=True).exclude(pk=self.pk))
+        there_are_other_staffs = bool(
+            InstitutionStaff.objects.filter(
+                institution=self.institution, may_administrate_users=True
+            ).exclude(pk=self.pk)
+        )
         return not there_are_other_staffs
 
     def delete(self, *args, **kwargs):
         if self._is_last_staff_membership():
-            raise BadgrValidationError('Cannot remove the last staff membership of this institution.', 500)
+            raise BadgrValidationError(
+                "Cannot remove the last staff membership of this institution.", 500
+            )
         return super(InstitutionStaff, self).delete(*args, **kwargs)
 
     @property
     def staff_page_url(self):
-        return urllib.parse.urljoin(settings.UI_URL, 'manage/institution/user-management')
+        return urllib.parse.urljoin(
+            settings.UI_URL, "manage/institution/user-management"
+        )
 
 
 class FacultyStaff(PermissionedRelationshipBase):
     """
     Many2Many realtionship between Faculty and users, with permissions added to the relationship
     """
-    faculty = models.ForeignKey('institution.Faculty', on_delete=models.CASCADE)
+
+    faculty = models.ForeignKey("institution.Faculty", on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = ('faculty', 'user')
+        unique_together = ("faculty", "user")
 
     @property
     def object(self):
@@ -170,10 +218,11 @@ class IssuerStaff(PermissionedRelationshipBase):
     """
     Many2Many realtionship between Issuer and users, with permissions added to the relationship
     """
-    issuer = models.ForeignKey('issuer.Issuer', on_delete=models.CASCADE)
+
+    issuer = models.ForeignKey("issuer.Issuer", on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = ('issuer', 'user')
+        unique_together = ("issuer", "user")
 
     @property
     def object(self):
@@ -190,11 +239,10 @@ class IssuerStaff(PermissionedRelationshipBase):
 
 
 class BadgeClassStaff(PermissionedRelationshipBase):
-
-    badgeclass = models.ForeignKey('issuer.BadgeClass', on_delete=models.CASCADE)
+    badgeclass = models.ForeignKey("issuer.BadgeClass", on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = ('badgeclass', 'user')
+        unique_together = ("badgeclass", "user")
 
     @property
     def object(self):

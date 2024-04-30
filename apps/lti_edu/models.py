@@ -8,15 +8,22 @@ from issuer.models import BadgeClass
 
 
 def get_uuid():
-    return ''.join(random.choice('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ') for i in range(25))
+    return "".join(
+        random.choice("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        for i in range(25)
+    )
 
 
 class StudentsEnrolled(BaseVersionedEntity, models.Model):
-    badge_class = models.ForeignKey(BadgeClass, related_name='lti_students', on_delete=models.CASCADE)
+    badge_class = models.ForeignKey(
+        BadgeClass, related_name="lti_students", on_delete=models.CASCADE
+    )
     date_created = models.DateTimeField(default=timezone.now)
     date_consent_given = models.DateTimeField(default=None, blank=True, null=True)
-    user = models.ForeignKey('badgeuser.BadgeUser', on_delete=models.CASCADE)
-    badge_instance = models.ForeignKey('issuer.BadgeInstance', on_delete=models.CASCADE, null=True)
+    user = models.ForeignKey("badgeuser.BadgeUser", on_delete=models.CASCADE)
+    badge_instance = models.ForeignKey(
+        "issuer.BadgeInstance", on_delete=models.CASCADE, null=True
+    )
     date_awarded = models.DateTimeField(default=None, blank=True, null=True)
     denied = models.BooleanField(default=False)
     deny_reason = models.CharField(max_length=255, blank=True, null=True)
@@ -27,7 +34,9 @@ class StudentsEnrolled(BaseVersionedEntity, models.Model):
         return self.email
 
     def save(self, *args, **kwargs):
-        self.badge_class.remove_cached_data(['cached_enrollments', 'cached_pending_enrollments'])
+        self.badge_class.remove_cached_data(
+            ["cached_enrollments", "cached_pending_enrollments"]
+        )
         return super(StudentsEnrolled, self).save(*args, **kwargs)
 
     @property
@@ -49,10 +58,10 @@ class StudentsEnrolled(BaseVersionedEntity, models.Model):
     @property
     def edu_id(self):
         social_account = self.user.get_social_account()
-        if social_account.provider == 'edu_id':
-            return social_account.extra_data['eduid']
+        if social_account.provider == "edu_id":
+            return social_account.extra_data["eduid"]
         else:
-            raise ValueError('User belonging to this enrollment has no eduid')
+            raise ValueError("User belonging to this enrollment has no eduid")
 
     def assertion_is_revoked(self):
         if self.badge_instance:

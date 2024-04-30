@@ -3,7 +3,11 @@ from rest_framework import serializers
 
 from institution.models import Institution
 from mainsite.exceptions import BadgrValidationError
-from mainsite.serializers import StripTagsCharField, BadgrBaseModelSerializer, BaseSlugRelatedField
+from mainsite.serializers import (
+    StripTagsCharField,
+    BadgrBaseModelSerializer,
+    BaseSlugRelatedField,
+)
 from .models import BadgeUser, CachedEmailAddress, UserProvisionment, Terms
 
 
@@ -13,15 +17,15 @@ class UserSlugRelatedField(BaseSlugRelatedField):
 
 class BadgeUserTokenSerializer(serializers.Serializer):
     class Meta:
-        apispec_definition = ('BadgeUserToken', {})
+        apispec_definition = ("BadgeUserToken", {})
 
     def to_representation(self, instance):
         representation = {
-            'username': instance.username,
-            'token': instance.cached_token()
+            "username": instance.username,
+            "token": instance.cached_token(),
         }
-        if self.context.get('tokenReplaced', False):
-            representation['replace'] = True
+        if self.context.get("tokenReplaced", False):
+            representation["replace"] = True
         return representation
 
     def update(self, instance, validated_data):
@@ -39,27 +43,32 @@ class InstitutionForProfileSerializer(serializers.Serializer):
 class BadgeUserProfileSerializer(serializers.Serializer):
     first_name = StripTagsCharField(max_length=30, allow_blank=True)
     last_name = StripTagsCharField(max_length=30, allow_blank=True)
-    email = serializers.EmailField(source='primary_email', required=False)
+    email = serializers.EmailField(source="primary_email", required=False)
     entity_id = serializers.CharField(read_only=True)
     marketing_opt_in = serializers.BooleanField(required=False)
-    institution = InstitutionForProfileSerializer(read_only=True, )
+    institution = InstitutionForProfileSerializer(
+        read_only=True,
+    )
     is_superuser = serializers.BooleanField(required=False)
 
 
 class EmailSerializer(BadgrBaseModelSerializer):
     variants = serializers.ListField(
         child=serializers.EmailField(required=False),
-        required=False, source='cached_variants', allow_null=True, read_only=True
+        required=False,
+        source="cached_variants",
+        allow_null=True,
+        read_only=True,
     )
     email = serializers.EmailField(required=True)
 
     class Meta:
         model = CachedEmailAddress
-        fields = ('id', 'email', 'verified', 'primary', 'variants')
-        read_only_fields = ('id', 'verified', 'primary', 'variants')
+        fields = ("id", "email", "verified", "primary", "variants")
+        read_only_fields = ("id", "verified", "primary", "variants")
 
     def create(self, validated_data):
-        new_address = validated_data.get('email')
+        new_address = validated_data.get("email")
         created = False
         try:
             email = CachedEmailAddress.objects.get(email=new_address)
@@ -70,15 +79,19 @@ class EmailSerializer(BadgrBaseModelSerializer):
             if not email.verified:
                 email = super(EmailSerializer, self).create(validated_data)
                 created = True
-            elif email.user != self.context.get('request').user:
+            elif email.user != self.context.get("request").user:
                 raise serializers.ValidationError("Could not register email address.")
 
-        if new_address != email.email and new_address not in [v.email for v in email.cached_variants()]:
+        if new_address != email.email and new_address not in [
+            v.email for v in email.cached_variants()
+        ]:
             email.add_variant(new_address)
-            raise serializers.ValidationError("Matching address already exists. New case variant registered.")
+            raise serializers.ValidationError(
+                "Matching address already exists. New case variant registered."
+            )
 
-        if validated_data.get('variants'):
-            for variant in validated_data.get('variants'):
+        if validated_data.get("variants"):
+            for variant in validated_data.get("variants"):
                 try:
                     email.add_variant(variant)
                 except serializers.ValidationError:
@@ -91,10 +104,10 @@ class EmailSerializer(BadgrBaseModelSerializer):
 
 class BadgeUserIdentifierField(serializers.CharField):
     def __init__(self, *args, **kwargs):
-        if 'source' not in kwargs:
-            kwargs['source'] = 'created_by_id'
-        if 'read_only' not in kwargs:
-            kwargs['read_only'] = True
+        if "source" not in kwargs:
+            kwargs["source"] = "created_by_id"
+        if "read_only" not in kwargs:
+            kwargs["read_only"] = True
         super(BadgeUserIdentifierField, self).__init__(*args, **kwargs)
 
     def to_representation(self, value):
@@ -105,11 +118,13 @@ class BadgeUserIdentifierField(serializers.CharField):
 
 
 class UserProvisionmentSerializer(serializers.Serializer):
-    user = UserSlugRelatedField(slug_field='entity_id', read_only=True)
+    user = UserSlugRelatedField(slug_field="entity_id", read_only=True)
     created_by = BadgeUserIdentifierField()
     email = serializers.EmailField(required=True)
     entity_id = serializers.CharField(read_only=True)
-    content_type = serializers.PrimaryKeyRelatedField(queryset=ContentType.objects.all(), required=True)
+    content_type = serializers.PrimaryKeyRelatedField(
+        queryset=ContentType.objects.all(), required=True
+    )
     object_id = serializers.CharField(required=True)
     data = serializers.JSONField()
     for_teacher = serializers.BooleanField(required=True)
@@ -118,10 +133,16 @@ class UserProvisionmentSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         validated_data = super(UserProvisionmentSerializer, self).validate(attrs)
-        entity = validated_data['content_type'].get_object_for_this_type(entity_id=validated_data['object_id'])
-        if not entity.has_permissions(self.context['request'].user, ['may_administrate_users']):
-            raise BadgrValidationError('You do not have permission to invite user for this entity.', 507)
-        validated_data['object_id'] = entity.id
+        entity = validated_data["content_type"].get_object_for_this_type(
+            entity_id=validated_data["object_id"]
+        )
+        if not entity.has_permissions(
+            self.context["request"].user, ["may_administrate_users"]
+        ):
+            raise BadgrValidationError(
+                "You do not have permission to invite user for this entity.", 507
+            )
+        validated_data["object_id"] = entity.id
         return attrs
 
     def create(self, validated_data):
@@ -140,9 +161,15 @@ class UserProvisionmentSerializerForEdit(serializers.Serializer):
 
     def update(self, instance, validated_data):
         if instance.rejected:
-            raise BadgrValidationError('You cannot edit an invitation that has been rejected.', 508)
-        if not instance.entity.has_permissions(self.context['request'].user, ['may_administrate_users']):
-            raise BadgrValidationError('You do not have permission to invite user for this entity.', 507)
+            raise BadgrValidationError(
+                "You cannot edit an invitation that has been rejected.", 508
+            )
+        if not instance.entity.has_permissions(
+            self.context["request"].user, ["may_administrate_users"]
+        ):
+            raise BadgrValidationError(
+                "You do not have permission to invite user for this entity.", 507
+            )
         [setattr(instance, attr, validated_data.get(attr)) for attr in validated_data]
         instance.save()
         return instance
@@ -171,19 +198,26 @@ class TermsAgreementSerializer(serializers.Serializer):
     accepted = serializers.BooleanField(required=False)
 
     def create(self, validated_data):
-        terms = Terms.objects.get(entity_id=validated_data['terms_entity_id'])
+        terms = Terms.objects.get(entity_id=validated_data["terms_entity_id"])
         institution = terms.institution
         if institution:
-            identifiers = [inst.identifier for inst in institution.award_allowed_institutions.all()] + [
-                institution.identifier]
+            identifiers = [
+                inst.identifier for inst in institution.award_allowed_institutions.all()
+            ] + [institution.identifier]
             if institution.alternative_identifier:
                 identifiers.append(institution.alternative_identifier)
-            schac_homes = self.context['request'].user.schac_homes
-            allowed = any(identifier in schac_homes for identifier in identifiers) or institution.award_allow_all_institutions
-            if not allowed and terms.terms_type != 'informal_badge':
-                raise BadgrValidationError('You cannot accept terms that are not allowed by your institution', 0)
-        if validated_data['accepted']:
-            return terms.accept(self.context['request'].user)
+            schac_homes = self.context["request"].user.schac_homes
+            allowed = (
+                any(identifier in schac_homes for identifier in identifiers)
+                or institution.award_allow_all_institutions
+            )
+            if not allowed and terms.terms_type != "informal_badge":
+                raise BadgrValidationError(
+                    "You cannot accept terms that are not allowed by your institution",
+                    0,
+                )
+        if validated_data["accepted"]:
+            return terms.accept(self.context["request"].user)
 
     def to_representation(self, instance):
         return super(TermsAgreementSerializer, self).to_representation(instance)

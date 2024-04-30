@@ -13,8 +13,14 @@ def resolver_blocker_for_students(f):
 
     def wrapper(*args, **kwargs):
         info = args[1]
-        if not hasattr(info.context.user, 'is_teacher') or not getattr(info.context.user, 'is_teacher'):
-            raise GraphQLException('Student may not retrieve {} of {}'.format(info.field_name, info.parent_type))
+        if not hasattr(info.context.user, "is_teacher") or not getattr(
+            info.context.user, "is_teacher"
+        ):
+            raise GraphQLException(
+                "Student may not retrieve {} of {}".format(
+                    info.field_name, info.parent_type
+                )
+            )
         return f(*args, **kwargs)
 
     return wrapper
@@ -27,9 +33,10 @@ def resolver_blocker_only_for_current_user(f):
         instance = args[0]
         info = args[1]
         if info.context.user == instance or (
-                hasattr(instance, 'user') and getattr(instance, 'user') == info.context.user):
+            hasattr(instance, "user") and getattr(instance, "user") == info.context.user
+        ):
             return f(*args)
-        raise GraphQLException('This call is only for the current user')
+        raise GraphQLException("This call is only for the current user")
 
     return wrapper
 
@@ -39,8 +46,15 @@ def resolver_blocker_for_super_user(f):
 
     def wrapper(*args, **kwargs):
         info = args[1]
-        if not hasattr(info.context.user, 'is_superuser') and not info.context.user.is_superuser:
-            raise GraphQLException('Only super users may retrieve {} of {}'.format(info.field_name, info.parent_type))
+        if (
+            not hasattr(info.context.user, "is_superuser")
+            and not info.context.user.is_superuser
+        ):
+            raise GraphQLException(
+                "Only super users may retrieve {} of {}".format(
+                    info.field_name, info.parent_type
+                )
+            )
         return f(*args, **kwargs)
 
     return wrapper
@@ -55,13 +69,22 @@ class JSONType(JSONString):
 class ContentTypeType(DjangoObjectType):
     class Meta:
         model = ContentType
-        fields = ('id',)
+        fields = ("id",)
 
 
 class UserProvisionmentType(DjangoObjectType):
     class Meta:
         model = UserProvisionment
-        fields = ('email', 'entity_id', 'content_type', 'object_id', 'data', 'for_teacher', 'rejected', 'created_at')
+        fields = (
+            "email",
+            "entity_id",
+            "content_type",
+            "object_id",
+            "data",
+            "for_teacher",
+            "rejected",
+            "created_at",
+        )
 
     content_type = graphene.Field(ContentTypeType)
     data = graphene.Field(JSONType)
@@ -115,10 +138,9 @@ class ImageResolverMixin(object):
 
 
 class StaffResolverMixin(object):
-
     @resolver_blocker_for_students
     def resolve_staff(self, info):
-        if self.has_permissions(info.context.user, ['may_read']):
+        if self.has_permissions(info.context.user, ["may_read"]):
             return self.staff_items
         else:
             return []

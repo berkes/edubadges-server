@@ -13,7 +13,11 @@ from mainsite.permissions import AuthenticatedWithVerifiedEmail
 from mainsite.utils import OriginSetting
 from oauth2_provider.models import AccessToken
 from rest_framework.response import Response
-from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, HTTP_403_FORBIDDEN
+from rest_framework.status import (
+    HTTP_404_NOT_FOUND,
+    HTTP_204_NO_CONTENT,
+    HTTP_403_FORBIDDEN,
+)
 from rest_framework.views import APIView
 
 
@@ -24,7 +28,7 @@ class BadgrSocialAccountList(BaseEntityListView):
     permission_classes = (AuthenticatedWithVerifiedEmail,)
 
     def get_objects(self, request, **kwargs):
-        obj =  self.request.user.socialaccount_set.all()
+        obj = self.request.user.socialaccount_set.all()
         return obj
 
     def get(self, request, **kwargs):
@@ -33,22 +37,23 @@ class BadgrSocialAccountList(BaseEntityListView):
 
 class BadgrSocialAccountConnect(APIView):
     permission_classes = (AuthenticatedWithVerifiedEmail, BadgrOAuthTokenHasScope)
-    valid_scopes = ['rw:profile']
+    valid_scopes = ["rw:profile"]
 
     def get(self, request, **kwargs):
         if not isinstance(request.auth, AccessToken):
             raise ValidationError("Invalid credentials")
-        provider_name = self.request.GET.get('provider', None)
+        provider_name = self.request.GET.get("provider", None)
         if provider_name is None:
-            raise ValidationError('No provider specified')
+            raise ValidationError("No provider specified")
 
         authcode = authcode_for_accesstoken(request.auth)
 
         redirect_url = "{origin}{url}?provider={provider}&authCode={code}".format(
             origin=OriginSetting.HTTP,
-            url=reverse('socialaccount_login'),
+            url=reverse("socialaccount_login"),
             provider=provider_name,
-            code=authcode)
+            code=authcode,
+        )
 
         return Response(dict(url=redirect_url))
 
@@ -66,7 +71,7 @@ class BadgrSocialAccountDetail(BaseEntityDetailView):
 
     def get_object(self, request, **kwargs):
         try:
-            return SocialAccount.objects.get(id=kwargs.get('id'))
+            return SocialAccount.objects.get(id=kwargs.get("id"))
         except SocialAccount.DoesNotExist:
             raise Http404
 

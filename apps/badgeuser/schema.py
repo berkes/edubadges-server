@@ -6,23 +6,32 @@ from directaward.models import DirectAwardBundle
 from directaward.schema import DirectAwardType
 from lti_edu.schema import StudentsEnrolledType
 from mainsite.exceptions import GraphQLException
-from mainsite.graphql_utils import UserProvisionmentType, resolver_blocker_only_for_current_user, \
-    resolver_blocker_for_students, resolver_blocker_for_super_user
-from staff.schema import InstitutionStaffType, FacultyStaffType, IssuerStaffType, BadgeClassStaffType
+from mainsite.graphql_utils import (
+    UserProvisionmentType,
+    resolver_blocker_only_for_current_user,
+    resolver_blocker_for_students,
+    resolver_blocker_for_super_user,
+)
+from staff.schema import (
+    InstitutionStaffType,
+    FacultyStaffType,
+    IssuerStaffType,
+    BadgeClassStaffType,
+)
 
 
 class TermsUrlType(DjangoObjectType):
     class Meta:
         model = TermsUrl
-        fields = ('url', 'language', 'excerpt')
+        fields = ("url", "language", "excerpt")
 
 
 class TermsType(DjangoObjectType):
     class Meta:
         model = Terms
-        fields = ('entity_id', 'terms_type', 'version', 'institution')
+        fields = ("entity_id", "terms_type", "version", "institution")
 
-    institution = graphene.Field('institution.schema.InstitutionType')
+    institution = graphene.Field("institution.schema.InstitutionType")
     terms_url = graphene.List(TermsUrlType)
 
     def resolve_terms_url(self, info):
@@ -32,7 +41,7 @@ class TermsType(DjangoObjectType):
 class TermsAgreementType(DjangoObjectType):
     class Meta:
         model = TermsAgreement
-        fields = ('agreed', 'agreed_version', 'terms', 'updated_at', 'entity_id')
+        fields = ("agreed", "agreed_version", "terms", "updated_at", "entity_id")
 
     terms = graphene.Field(TermsType)
 
@@ -40,11 +49,19 @@ class TermsAgreementType(DjangoObjectType):
 class BadgeUserType(DjangoObjectType):
     class Meta:
         model = BadgeUser
-        fields = ('id', 'first_name', 'last_name', 'email', 'date_joined', 'entity_id', 'userprovisionments',
-                  'validated_name')
+        fields = (
+            "id",
+            "first_name",
+            "last_name",
+            "email",
+            "date_joined",
+            "entity_id",
+            "userprovisionments",
+            "validated_name",
+        )
 
     direct_awards = graphene.List(DirectAwardType)
-    institution = graphene.Field('institution.schema.InstitutionType')
+    institution = graphene.Field("institution.schema.InstitutionType")
     institution_staff = graphene.Field(InstitutionStaffType)
     faculty_staffs = graphene.List(FacultyStaffType)
     issuer_staffs = graphene.List(IssuerStaffType)
@@ -106,9 +123,9 @@ class Query(object):
     user = graphene.Field(BadgeUserType, id=graphene.String())
 
     def resolve_user(self, info, **kwargs):
-        user = BadgeUser.objects.get(entity_id=kwargs.get('id'))
+        user = BadgeUser.objects.get(entity_id=kwargs.get("id"))
         if info.context.user.institution != user.institution:
-            raise GraphQLException('Cannot query user outside your institution')
+            raise GraphQLException("Cannot query user outside your institution")
         return user
 
     @resolver_blocker_for_students
@@ -120,4 +137,6 @@ class Query(object):
 
     @resolver_blocker_for_super_user
     def resolve_all_users(self, info, **kwargs):
-        return BadgeUser.objects.filter(is_teacher=True, institution__isnull=False).all()
+        return BadgeUser.objects.filter(
+            is_teacher=True, institution__isnull=False
+        ).all()

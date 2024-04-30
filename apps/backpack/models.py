@@ -16,7 +16,10 @@ from mainsite.models import BaseAuditedModel
 
 
 class BaseSharedModel(CacheModel, CreatedUpdatedAt):
-    SHARE_PROVIDERS = [(p.provider_code, p.provider_name) for code, p in list(SharingManager.ManagerProviders.items())]
+    SHARE_PROVIDERS = [
+        (p.provider_code, p.provider_name)
+        for code, p in list(SharingManager.ManagerProviders.items())
+    ]
     provider = models.CharField(max_length=254, choices=SHARE_PROVIDERS)
     source = models.CharField(max_length=254, default="unknown")
 
@@ -28,14 +31,18 @@ class BaseSharedModel(CacheModel, CreatedUpdatedAt):
 
 
 class BackpackBadgeShare(BaseSharedModel):
-    badgeinstance = models.ForeignKey("issuer.BadgeInstance", on_delete=models.CASCADE, null=True)
+    badgeinstance = models.ForeignKey(
+        "issuer.BadgeInstance", on_delete=models.CASCADE, null=True
+    )
 
     def get_share_url(self, provider, **kwargs):
         return SharingManager.share_url(provider, self.badgeinstance, **kwargs)
 
 
 class ImportedAssertion(BaseAuditedModel, BaseVersionedEntity, models.Model):
-    user = models.ForeignKey('badgeuser.BadgeUser', blank=False, null=False, on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        "badgeuser.BadgeUser", blank=False, null=False, on_delete=models.CASCADE
+    )
     import_url = models.URLField(max_length=512, null=False, blank=False)
     verified = models.BooleanField(default=False)
     code = models.TextField(null=True, blank=True)
@@ -43,17 +50,25 @@ class ImportedAssertion(BaseAuditedModel, BaseVersionedEntity, models.Model):
 
     def validate(self, profile_type, recipient_identifier):
         assertion_json = requests.get(self.import_url).json()
-        data = {'profile': {profile_type: recipient_identifier}, 'data': assertion_json}
-        response = requests.post(json=data,
-                                 url=urljoin(settings.VALIDATOR_URL, 'results'),
-                                 headers={'Accept': 'application/json'})
+        data = {"profile": {profile_type: recipient_identifier}, "data": assertion_json}
+        response = requests.post(
+            json=data,
+            url=urljoin(settings.VALIDATOR_URL, "results"),
+            headers={"Accept": "application/json"},
+        )
         return response.json()
 
     def validate_unique(self, exclude=None):
-        if self.__class__.objects.filter(import_url=self.import_url, user=self.user).exclude(pk=self.pk).exists():
-            raise BadgrValidationFieldError('import_url',
-                                            "ImportedAssertion with this url already exists for this user.",
-                                            936)
+        if (
+            self.__class__.objects.filter(import_url=self.import_url, user=self.user)
+            .exclude(pk=self.pk)
+            .exists()
+        ):
+            raise BadgrValidationFieldError(
+                "import_url",
+                "ImportedAssertion with this url already exists for this user.",
+                936,
+            )
         return super(ImportedAssertion, self).validate_unique(exclude=exclude)
 
     def save(self, *args, **kwargs):

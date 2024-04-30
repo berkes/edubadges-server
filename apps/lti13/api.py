@@ -13,11 +13,11 @@ class LtiCourseDetail(BaseEntityDetailView):
     model = LtiCourse
     permission_classes = (TeachPermission,)
     serializer_class = LtiCourseSerializer
-    http_method_names = ['delete']
+    http_method_names = ["delete"]
 
 
 class LtiCourseDetailList(BaseEntityListView):
     model = LtiCourse
     permission_classes = (TeachPermission,)
     serializer_class = LtiCourseSerializer
-    http_method_names = ['post']
+    http_method_names = ["post"]

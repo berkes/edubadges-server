@@ -9,7 +9,7 @@ REVOKED_STUDENT_EMAIL = "edubadges.surf+revoked@gmail.com"
 AWARDED_STUDENT_EMAIL = "edubadges.surf+awarded@gmail.com"
 # Password1!
 
-BADGE_CLASS_INTRODUCTION_TO_PSYCHOLOGY = 'Introduction to Psychology'
-BADGE_CLASS_COGNITIVE_PSYCHOLOGY = 'Cognitive Psychology'
-BADGE_CLASS_PSYCHOMETRICS = 'Psychometrics'
-BADGE_CLASS_GROUP_DYNAMICS = 'Group Dynamics'
+BADGE_CLASS_INTRODUCTION_TO_PSYCHOLOGY = "Introduction to Psychology"
+BADGE_CLASS_COGNITIVE_PSYCHOLOGY = "Cognitive Psychology"
+BADGE_CLASS_PSYCHOMETRICS = "Psychometrics"
+BADGE_CLASS_GROUP_DYNAMICS = "Group Dynamics"

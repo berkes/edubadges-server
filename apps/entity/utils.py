@@ -2,18 +2,18 @@ from mainsite.exceptions import BadgrValidationError
 
 
 def get_form_error_code(error_type):
-    if error_type is 'null':
+    if error_type is "null":
         return 901
-    elif error_type is 'invalid':
+    elif error_type is "invalid":
         return 902
-    elif error_type is 'blank':
+    elif error_type is "blank":
         return 903
-    elif error_type is 'required':
+    elif error_type is "required":
         return 904
     elif isinstance(error_type, int):
         return error_type
     else:
-        print(f'no error_code for {error_type}')
+        print(f"no error_code for {error_type}")
         return 999
 
 
@@ -26,18 +26,24 @@ def validate_errors(serializer):
             fields[attr] = []
             for error in field_errors:
                 try:
-                    fields[attr].append({
-                        'error_code': get_form_error_code(vars(error)['code']),
-                        'error_message': error
-                    })
+                    fields[attr].append(
+                        {
+                            "error_code": get_form_error_code(vars(error)["code"]),
+                            "error_message": error,
+                        }
+                    )
                 except TypeError as e:  # TODO: make this recursive for endless depth
                     sub_fields = {}
                     for sub_attr, sub_errors in error.items():
                         sub_fields[sub_attr] = []
                         for sub_error in sub_errors:
-                            sub_fields[sub_attr].append({
-                                'error_code': get_form_error_code(vars(sub_error)['code']),
-                                'error_message': sub_error
-                            })
+                            sub_fields[sub_attr].append(
+                                {
+                                    "error_code": get_form_error_code(
+                                        vars(sub_error)["code"]
+                                    ),
+                                    "error_message": sub_error,
+                                }
+                            )
                     fields[attr].append(sub_fields)
         raise BadgrValidationError(error_message=fields, error_code=999)

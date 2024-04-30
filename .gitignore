@@ -48,4 +48,7 @@ pipdeptree.txt
 .pydevproject
 .settings
 
-
+#daniel local
+pyrightconfig.json
+start.fish
+docs/code

@@ -15,11 +15,12 @@ class Command(BaseCommand):
         # Prevent MySQLdb._exceptions.OperationalError: (2006, 'MySQL server has gone away')
         connections.close_all()
 
-        logger = logging.getLogger('Badgr.Debug')
+        logger = logging.getLogger("Badgr.Debug")
         logger.info("Running delete_direct_awards")
 
-        direct_awards = DirectAward.objects.filter(delete_at__lt=make_aware(datetime.utcnow()),
-                                                   status='Deleted').all()
+        direct_awards = DirectAward.objects.filter(
+            delete_at__lt=make_aware(datetime.utcnow()), status="Deleted"
+        ).all()
 
         for direct_award in direct_awards:
             direct_award.delete()

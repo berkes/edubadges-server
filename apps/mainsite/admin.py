@@ -11,30 +11,44 @@ from django_otp.plugins.otp_totp.admin import TOTPDeviceAdmin
 from django.contrib.admin import AdminSite, ModelAdmin, StackedInline
 from django.utils.module_loading import autodiscover_modules
 from django.utils.translation import ugettext_lazy
-from mainsite.models import BadgrApp, EmailBlacklist, ApplicationInfo, AccessTokenProxy, LegacyTokenProxy
-from oauth2_provider.models import get_application_model, get_grant_model, get_access_token_model, \
-    get_refresh_token_model
+from mainsite.models import (
+    BadgrApp,
+    EmailBlacklist,
+    ApplicationInfo,
+    AccessTokenProxy,
+    LegacyTokenProxy,
+)
+from oauth2_provider.models import (
+    get_application_model,
+    get_grant_model,
+    get_access_token_model,
+    get_refresh_token_model,
+)
 
 badgrlogger = badgrlog.BadgrLogger()
 
 
 class BadgrAdminSite(OTPAdminSite):
-    site_header = ugettext_lazy('Badgr')
-    index_title = ugettext_lazy('Staff Dashboard')
-    site_title = 'Badgr'
+    site_header = ugettext_lazy("Badgr")
+    index_title = ugettext_lazy("Staff Dashboard")
+    site_title = "Badgr"
     # login_template = 'admin/superlogin.html' if settings.SUPERUSER_LOGIN_WITH_SURFCONEXT else None
 
     def autodiscover(self):
-        autodiscover_modules('admin', register_to=self)
+        autodiscover_modules("admin", register_to=self)
 
     def login(self, request, extra_context=None):
         response = super(BadgrAdminSite, self).login(request, extra_context)
-        if request.method == 'POST':
+        if request.method == "POST":
             # form submission
             if response.status_code != 302:
                 # failed /staff login
-                username = request.POST.get('username', None)
-                badgrlogger.event(badgrlog.FailedLoginAttempt(request, username, endpoint='/staff/login'))
+                username = request.POST.get("username", None)
+                badgrlogger.event(
+                    badgrlog.FailedLoginAttempt(
+                        request, username, endpoint="/staff/login"
+                    )
+                )
 
         return response
 
@@ -47,31 +61,45 @@ admin.site.__class__ = OTPAdminSite
 
 class BadgrAppAdmin(ModelAdmin):
     fieldsets = (
-        (None, {
-            'fields': ('name', 'is_demo_environment'),
-        }),
+        (
+            None,
+            {
+                "fields": ("name", "is_demo_environment"),
+            },
+        ),
     )
-    list_display = ('name', 'is_demo_environment',)
-    list_display_links = ('name', 'is_demo_environment',)
+    list_display = (
+        "name",
+        "is_demo_environment",
+    )
+    list_display_links = (
+        "name",
+        "is_demo_environment",
+    )
+
 
 badgr_admin.register(BadgrApp, BadgrAppAdmin)
 
 
 class EmailBlacklistAdmin(ModelAdmin):
-    readonly_fields = ('email',)
-    list_display = ('email',)
-    search_fields = ('email',)
+    readonly_fields = ("email",)
+    list_display = ("email",)
+    search_fields = ("email",)
+
+
 badgr_admin.register(EmailBlacklist, EmailBlacklistAdmin)
 
 # 3rd party apps
 
+
 class LegacyTokenAdmin(ModelAdmin):
-    list_display = ('obscured_token','user','created')
-    list_filter = ('created',)
-    raw_id_fields = ('user',)
-    search_fields = ('user__email', 'user__first_name', 'user__last_name')
-    readonly_fields = ('obscured_token','created')
-    fields = ('obscured_token', 'user', 'created')
+    list_display = ("obscured_token", "user", "created")
+    list_filter = ("created",)
+    raw_id_fields = ("user",)
+    search_fields = ("user__email", "user__first_name", "user__last_name")
+    readonly_fields = ("obscured_token", "created")
+    fields = ("obscured_token", "user", "created")
+
 
 badgr_admin.register(LegacyTokenProxy, LegacyTokenAdmin)
 
@@ -108,18 +136,23 @@ class ApplicationInfoInline(StackedInline):
 
 
 class ApplicationInfoAdmin(ApplicationAdmin):
-    inlines = [
-        ApplicationInfoInline
-    ]
+    inlines = [ApplicationInfoInline]
+
+
 badgr_admin.register(Application, ApplicationInfoAdmin)
 
 
 class SecuredAccessTokenAdmin(AccessTokenAdmin):
     list_display = ("obscured_token", "user", "application", "expires")
-    raw_id_fields = ('user','application')
-    fields = ('obscured_token','user','application','expires','scope',)
-    readonly_fields = ('obscured_token',)
+    raw_id_fields = ("user", "application")
+    fields = (
+        "obscured_token",
+        "user",
+        "application",
+        "expires",
+        "scope",
+    )
+    readonly_fields = ("obscured_token",)
+
 
 badgr_admin.register(AccessTokenProxy, SecuredAccessTokenAdmin)
-
-

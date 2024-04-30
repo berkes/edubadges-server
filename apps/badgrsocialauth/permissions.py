@@ -16,4 +16,8 @@ class IsSuperUser(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user and hasattr(request.user, 'is_superuser') and request.user.is_superuser
+        return (
+            request.user
+            and hasattr(request.user, "is_superuser")
+            and request.user.is_superuser
+        )

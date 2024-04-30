@@ -26,6 +26,7 @@ from mainsite.serializers import MarkdownCharField, StripTagsCharField
 from mainsite.utils import OriginSetting
 from mainsite.utils import send_mail, EmailMessageMaker
 from jose import jwt, jws
+
 logger = badgrlog.BadgrLogger()
 
 
@@ -34,12 +35,12 @@ class LocalBadgeInstanceUploadSerializerV1(serializers.Serializer):
     url = serializers.URLField(required=False, write_only=True)
     assertion = serializers.CharField(required=False, write_only=True)
     recipient_identifier = serializers.CharField(required=False, read_only=True)
-    acceptance = serializers.CharField(default='Accepted')
+    acceptance = serializers.CharField(default="Accepted")
     public = serializers.BooleanField(required=False, default=False)
     include_evidence = serializers.BooleanField(required=False, default=False)
     narrative = MarkdownCharField(required=False, read_only=True)
 
-    extensions = serializers.DictField(source='extension_items', read_only=True)
+    extensions = serializers.DictField(source="extension_items", read_only=True)
 
     def to_representation(self, obj):
         """
@@ -47,28 +48,42 @@ class LocalBadgeInstanceUploadSerializerV1(serializers.Serializer):
         variable 'format' from a query param in the GET request with the
         value "plain", make the `json` field for this instance read_only.
         """
-        if self.context.get('format', 'v1') == 'plain':
+        if self.context.get("format", "v1") == "plain":
             self.fields.json = serializers.DictField(read_only=True)
-        representation = super(LocalBadgeInstanceUploadSerializerV1, self).to_representation(obj)
+        representation = super(
+            LocalBadgeInstanceUploadSerializerV1, self
+        ).to_representation(obj)
 
-        representation['id'] = obj.entity_id
-        representation['json'] = V1BadgeInstanceSerializer(obj, context=self.context).data
-        representation['imagePreview'] = {
+        representation["id"] = obj.entity_id
+        representation["json"] = V1BadgeInstanceSerializer(
+            obj, context=self.context
+        ).data
+        representation["imagePreview"] = {
             "type": "image",
-            "id": "{}{}?type=png".format(OriginSetting.HTTP, reverse('badgeclass_image', kwargs={
-                'entity_id': obj.cached_badgeclass.entity_id}))
+            "id": "{}{}?type=png".format(
+                OriginSetting.HTTP,
+                reverse(
+                    "badgeclass_image",
+                    kwargs={"entity_id": obj.cached_badgeclass.entity_id},
+                ),
+            ),
         }
         if obj.cached_issuer.image:
-            representation['issuerImagePreview'] = {
+            representation["issuerImagePreview"] = {
                 "type": "image",
-                "id": "{}{}?type=png".format(OriginSetting.HTTP,
-                                             reverse('issuer_image', kwargs={'entity_id': obj.cached_issuer.entity_id}))
+                "id": "{}{}?type=png".format(
+                    OriginSetting.HTTP,
+                    reverse(
+                        "issuer_image",
+                        kwargs={"entity_id": obj.cached_issuer.entity_id},
+                    ),
+                ),
             }
 
         if obj.image:
-            representation['image'] = obj.image_url()
+            representation["image"] = obj.image_url()
 
-        representation['shareUrl'] = obj.share_url
+        representation["shareUrl"] = obj.share_url
 
         return representation
 
@@ -77,27 +92,35 @@ class LocalBadgeInstanceUploadSerializerV1(serializers.Serializer):
         Ensure only one assertion input field given.
         """
 
-        fields_present = ['image' in data, 'url' in data,
-                          'assertion' in data and data.get('assertion')]
-        if (fields_present.count(True) > 1):
-            raise serializers.ValidationError(
-                "Only one instance input field allowed.")
+        fields_present = [
+            "image" in data,
+            "url" in data,
+            "assertion" in data and data.get("assertion"),
+        ]
+        if fields_present.count(True) > 1:
+            raise serializers.ValidationError("Only one instance input field allowed.")
 
         return data
 
     def create(self, validated_data):
-        owner = validated_data.get('created_by')
+        owner = validated_data.get("created_by")
         try:
             instance, created = BadgeCheckHelper.get_or_create_assertion(
-                url=validated_data.get('url', None),
-                imagefile=validated_data.get('image', None),
-                assertion=validated_data.get('assertion', None),
+                url=validated_data.get("url", None),
+                imagefile=validated_data.get("image", None),
+                assertion=validated_data.get("assertion", None),
                 created_by=owner,
             )
             if not created:
                 if instance.acceptance == BadgeInstance.ACCEPTANCE_ACCEPTED:
                     raise RestframeworkValidationError(
-                        [{'name': "DUPLICATE_BADGE", 'description': "You already have this badge in your backpack"}])
+                        [
+                            {
+                                "name": "DUPLICATE_BADGE",
+                                "description": "You already have this badge in your backpack",
+                            }
+                        ]
+                    )
                 instance.acceptance = BadgeInstance.ACCEPTANCE_ACCEPTED
                 instance.save()
             owner.publish()  # update BadgeUser.cached_badgeinstances()
@@ -106,15 +129,18 @@ class LocalBadgeInstanceUploadSerializerV1(serializers.Serializer):
         return instance
 
     def update(self, instance, validated_data):
-        """ Updating acceptance status (to 'Accepted') is permitted as well as changing public status. """
+        """Updating acceptance status (to 'Accepted') is permitted as well as changing public status."""
         # Only locally issued badges will ever have an acceptance status other than 'Accepted'
-        if instance.acceptance in ['Unaccepted', 'Rejected'] and validated_data.get('acceptance') == 'Accepted':
-            instance.acceptance = 'Accepted'
+        if (
+            instance.acceptance in ["Unaccepted", "Rejected"]
+            and validated_data.get("acceptance") == "Accepted"
+        ):
+            instance.acceptance = "Accepted"
             instance.save()
-        public = validated_data.get('public', None)
+        public = validated_data.get("public", None)
         if public is not None:
             instance.public = public
-            instance.include_evidence = validated_data.get('include_evidence', False)
+            instance.include_evidence = validated_data.get("include_evidence", False)
             instance.save()
         return instance
 
@@ -133,7 +159,7 @@ class BadgePotentiallyEmptyField(serializers.Field):
     def get_attribute(self, instance):
         value = serializers.Field.get_attribute(self, instance)
 
-        if value == '' or value is None or value == {}:
+        if value == "" or value is None or value == {}:
             if not self.required or not self.allow_blank:
                 raise SkipField()
         return value
@@ -143,12 +169,11 @@ class BadgePotentiallyEmptyField(serializers.Field):
         If an empty value (empty string, null) exists in an optional
         field, SkipField.
         """
-        (is_empty_value, data) = serializers.Field.validate_empty_values(self,
-                                                                         data)
+        (is_empty_value, data) = serializers.Field.validate_empty_values(self, data)
 
-        if is_empty_value or data == '':
+        if is_empty_value or data == "":
             if self.required:
-                self.fail('required')
+                self.fail("required")
             raise SkipField()
 
         return (False, data)
@@ -156,9 +181,9 @@ class BadgePotentiallyEmptyField(serializers.Field):
 
 class VerifierBadgeDateTimeField(BadgePotentiallyEmptyField, serializers.Field):
     default_error_messages = {
-        'not_int_or_str': 'Invalid format. Expected an int or str.',
-        'bad_str': 'Invalid format. String is not ISO 8601 or unix timestamp.',
-        'bad_int': 'Invalid format. Unix timestamp is out of range.',
+        "not_int_or_str": "Invalid format. Expected an int or str.",
+        "bad_str": "Invalid format. String is not ISO 8601 or unix timestamp.",
+        "bad_int": "Invalid format. Unix timestamp is out of range.",
     }
 
     def to_internal_value(self, value):
@@ -175,15 +200,15 @@ class VerifierBadgeDateTimeField(BadgePotentiallyEmptyField, serializers.Field):
                         parse_date(value), datetime.datetime.min.time()
                     )
                 except (TypeError, ValueError):
-                    self.fail('bad_str')
+                    self.fail("bad_str")
             return result
         elif isinstance(value, (int, float)):
             try:
                 return datetime.datetime.utcfromtimestamp(value)
             except ValueError:
-                self.fail('bad_int')
+                self.fail("bad_int")
         else:
-            self.fail('not_int_or_str')
+            self.fail("not_int_or_str")
 
     def to_representation(self, string_value):
         if isinstance(string_value, (str, int, float)):
@@ -196,13 +221,10 @@ class VerifierBadgeDateTimeField(BadgePotentiallyEmptyField, serializers.Field):
 
 class BadgeURLField(serializers.URLField):
     def to_representation(self, value):
-        if self.context.get('format', 'v1') == 'v1':
-            result = {
-                'type': '@id',
-                'id': value
-            }
-            if self.context.get('name') is not None:
-                result['name'] = self.context.get('name')
+        if self.context.get("format", "v1") == "v1":
+            result = {"type": "@id", "id": value}
+            if self.context.get("name") is not None:
+                result["name"] = self.context.get("name")
             return result
         else:
             return value
@@ -210,13 +232,10 @@ class BadgeURLField(serializers.URLField):
 
 class BadgeImageURLField(serializers.URLField):
     def to_representation(self, value):
-        if self.context.get('format', 'v1') == 'v1':
-            result = {
-                'type': 'image',
-                'id': value
-            }
-            if self.context.get('name') is not None:
-                result['name'] = self.context.get('name')
+        if self.context.get("format", "v1") == "v1":
+            result = {"type": "image", "id": value}
+            if self.context.get("name") is not None:
+                result["name"] = self.context.get("name")
             return result
         else:
             return value
@@ -224,22 +243,16 @@ class BadgeImageURLField(serializers.URLField):
 
 class BadgeStringField(serializers.CharField):
     def to_representation(self, value):
-        if self.context.get('format', 'v1') == 'v1':
-            return {
-                'type': 'xsd:string',
-                '@value': value
-            }
+        if self.context.get("format", "v1") == "v1":
+            return {"type": "xsd:string", "@value": value}
         else:
             return value
 
 
 class BadgeEmailField(serializers.EmailField):
     def to_representation(self, value):
-        if self.context.get('format', 'v1') == 'v1':
-            return {
-                'type': 'email',
-                '@value': value
-            }
+        if self.context.get("format", "v1") == "v1":
+            return {"type": "email", "@value": value}
         else:
             return value
 
@@ -247,11 +260,8 @@ class BadgeEmailField(serializers.EmailField):
 class BadgeDateTimeField(VerifierBadgeDateTimeField):
     def to_representation(self, string_value):
         value = super(BadgeDateTimeField, self).to_representation(string_value)
-        if self.context.get('format', 'v1') == 'v1':
-            return {
-                'type': 'xsd:dateTime',
-                '@value': value
-            }
+        if self.context.get("format", "v1") == "v1":
+            return {"type": "xsd:dateTime", "@value": value}
         else:
             return value
 
@@ -279,8 +289,8 @@ class V1BadgeClassSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         representation = super(V1BadgeClassSerializer, self).to_representation(instance)
-        if 'alignment' in instance:
-            representation['alignment'] = instance['alignment']
+        if "alignment" in instance:
+            representation["alignment"] = instance["alignment"]
         return representation
 
 
@@ -302,18 +312,22 @@ class V1BadgeInstanceSerializer(V1InstanceSerializer):
 
     def to_representation(self, instance):
         localbadgeinstance_json = instance.json
-        localbadgeinstance_json['uid'] = instance.entity_id
-        localbadgeinstance_json['badge'] = instance.cached_badgeclass.json
+        localbadgeinstance_json["uid"] = instance.entity_id
+        localbadgeinstance_json["badge"] = instance.cached_badgeclass.json
         if instance.cached_badgeclass.criteria_text:
-            localbadgeinstance_json['badge']['criteria_text'] = instance.cached_badgeclass.criteria_text
-        localbadgeinstance_json['badge']['issuer'] = instance.cached_issuer.json
+            localbadgeinstance_json["badge"]["criteria_text"] = (
+                instance.cached_badgeclass.criteria_text
+            )
+        localbadgeinstance_json["badge"]["issuer"] = instance.cached_issuer.json
 
         # clean up recipient to match V1InstanceSerializer
-        localbadgeinstance_json['recipient'] = {
+        localbadgeinstance_json["recipient"] = {
             "type": "email",
             "recipient": instance.recipient_identifier,
         }
-        return super(V1BadgeInstanceSerializer, self).to_representation(localbadgeinstance_json)
+        return super(V1BadgeInstanceSerializer, self).to_representation(
+            localbadgeinstance_json
+        )
 
 
 class ImportedAssertionSerializer(serializers.Serializer):
@@ -326,75 +340,93 @@ class ImportedAssertionSerializer(serializers.Serializer):
 
     def to_representation(self, obj):
         representation = super(ImportedAssertionSerializer, self).to_representation(obj)
-        external_badge = requests.get(representation['import_url']).json()
-        representation['issuedOn'] = external_badge['issuedOn']
-        representation['importedBadge'] = external_badge
-        external_badge_class = requests.get(external_badge['badge']).json()
-        representation['badgeclass'] = external_badge_class
-        external_issuer = requests.get(external_badge_class['issuer']).json()
-        representation['badgeclass']['issuer'] = external_issuer
+        external_badge = requests.get(representation["import_url"]).json()
+        representation["issuedOn"] = external_badge["issuedOn"]
+        representation["importedBadge"] = external_badge
+        external_badge_class = requests.get(external_badge["badge"]).json()
+        representation["badgeclass"] = external_badge_class
+        external_issuer = requests.get(external_badge_class["issuer"]).json()
+        representation["badgeclass"]["issuer"] = external_issuer
         return representation
 
     def validate(self, data):
         """
         Ensure only one assertion input field given.
         """
-        if not data.get('image') and not data.get('import_url'):
-            raise serializers.ValidationError('import_url or image required.')
-        if not data.get('email'):
-            raise serializers.ValidationError('email required.')
+        if not data.get("image") and not data.get("import_url"):
+            raise serializers.ValidationError("import_url or image required.")
+        if not data.get("email"):
+            raise serializers.ValidationError("email required.")
         return data
 
     def create(self, validated_data, **kwargs):
-        verify_url = validated_data['import_url']
+        verify_url = validated_data["import_url"]
         if not verify_url:
-            image_file = validated_data['image']
+            image_file = validated_data["image"]
             image_file.seek(0)
             assertion = unbake(image_file)
-            if image_file.name.endswith('svg'):
+            if image_file.name.endswith("svg"):
                 verify_url = assertion.decode()
             else:
                 try:
                     data = json.loads(assertion)
-                    verify_url = data['id']
+                    verify_url = data["id"]
                 except JSONDecodeError:
                     headers = jwt.get_unverified_header(assertion)
                     payload = jwt.get_unverified_claims(assertion)
-                    verification_url = payload.get('verification').get('url')
+                    verification_url = payload.get("verification").get("url")
                     key = requests.get(verification_url).text
                     # This will raise JWSSignatureError if not valid
-                    jws.verify(assertion, key, headers.get('alg'))
-                    verify_url = payload['id']
+                    jws.verify(assertion, key, headers.get("alg"))
+                    verify_url = payload["id"]
 
         valid_domain_name = False
-        allowed_urls = [allowed_url.url for allowed_url in ImportBadgeAllowedUrl.objects.all()]
+        allowed_urls = [
+            allowed_url.url for allowed_url in ImportBadgeAllowedUrl.objects.all()
+        ]
         for allowed_url in allowed_urls:
-            valid_domain_name = valid_domain_name or verify_url.startswith(allowed_url.strip())
+            valid_domain_name = valid_domain_name or verify_url.startswith(
+                allowed_url.strip()
+            )
         if not valid_domain_name:
-            raise serializers.ValidationError(f'Invalid URL {verify_url}. Allowed are {allowed_urls}')
+            raise serializers.ValidationError(
+                f"Invalid URL {verify_url}. Allowed are {allowed_urls}"
+            )
         assertion = requests.get(verify_url).json()
         # make sure the email address matches
-        recipient = assertion['recipient']
-        if recipient['type'] != 'email':
-            raise serializers.ValidationError('Only recipient email is supported')
-        user = validated_data['created_by']
-        email = validated_data['email']
-        if recipient.get('hashed'):
-            salt = recipient.get('salt', '')
-            value = 'sha256$' + hashlib.sha256(email.encode() + salt.encode()).hexdigest()
+        recipient = assertion["recipient"]
+        if recipient["type"] != "email":
+            raise serializers.ValidationError("Only recipient email is supported")
+        user = validated_data["created_by"]
+        email = validated_data["email"]
+        if recipient.get("hashed"):
+            salt = recipient.get("salt", "")
+            value = (
+                "sha256$" + hashlib.sha256(email.encode() + salt.encode()).hexdigest()
+            )
         else:
             value = email
-        if recipient['identity'] != value:
-            raise serializers.ValidationError('email mismatch', 409)
+        if recipient["identity"] != value:
+            raise serializers.ValidationError("email mismatch", 409)
         if email == user.email:
-            return ImportedAssertion.objects.create(user=user, import_url=verify_url, verified=True, email=email)
+            return ImportedAssertion.objects.create(
+                user=user, import_url=verify_url, verified=True, email=email
+            )
 
-        code = ''.join(random.choice(string.ascii_uppercase) for i in range(6))
-        imported_assertion = ImportedAssertion.objects.create(user=user, import_url=verify_url, verified=False,
-                                                              code=code, email=email)
-        badge = requests.get(assertion['badge']).json()
-        issuer = requests.get(badge['issuer']).json()
+        code = "".join(random.choice(string.ascii_uppercase) for i in range(6))
+        imported_assertion = ImportedAssertion.objects.create(
+            user=user, import_url=verify_url, verified=False, code=code, email=email
+        )
+        badge = requests.get(assertion["badge"]).json()
+        issuer = requests.get(badge["issuer"]).json()
         subject = f'Email validation for Badge {badge["name"]}'
-        message = EmailMessageMaker.create_email_validation_mail(code, user, badge, issuer)
-        send_mail(subject, message=strip_tags(message), html_message=message, recipient_list=[email])
+        message = EmailMessageMaker.create_email_validation_mail(
+            code, user, badge, issuer
+        )
+        send_mail(
+            subject,
+            message=strip_tags(message),
+            html_message=message,
+            recipient_list=[email],
+        )
         return imported_assertion

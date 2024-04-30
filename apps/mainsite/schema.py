@@ -9,14 +9,16 @@ import lti_edu.schema
 import notifications.schema
 
 
-class Query(institution.schema.Query,
-            badgeuser.schema.Query,
-            issuer.schema.Query,
-            lti13.schema.Query,
-            lti_edu.schema.Query,
-            directaward.schema.Query,
-            notifications.schema.Query,
-            graphene.ObjectType):
+class Query(
+    institution.schema.Query,
+    badgeuser.schema.Query,
+    issuer.schema.Query,
+    lti13.schema.Query,
+    lti_edu.schema.Query,
+    directaward.schema.Query,
+    notifications.schema.Query,
+    graphene.ObjectType,
+):
     pass
 
 

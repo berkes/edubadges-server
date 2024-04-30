@@ -5,12 +5,12 @@ from badgrsocialauth.utils import BadgrSocialAuthProviderMixin
 
 
 class SurfConextProvider(BadgrSocialAuthProviderMixin, Provider):
-    id = 'surf_conext'
-    name = 'SURFconext'
-    package = 'badgrsocialauth.providers.surf_conext'
+    id = "surf_conext"
+    name = "SURFconext"
+    package = "badgrsocialauth.providers.surf_conext"
 
     def extract_uid(self, response):
-        return response['sub']
+        return response["sub"]
 
 
 providers.registry.register(SurfConextProvider)

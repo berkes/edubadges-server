@@ -12,13 +12,13 @@ class BadgeClassSerializer(BadgrBaseModelSerializer):
 
     class Meta:
         model = BadgeClass
-        fields = '__all__'
+        fields = "__all__"
 
 
 class IssuerSerializer(BadgrBaseModelSerializer):
     class Meta:
         model = Issuer
-        fields = ('name',)
+        fields = ("name",)
 
 
 class BadgeClassSerializerWithRelations(BadgrBaseModelSerializer):
@@ -26,15 +26,16 @@ class BadgeClassSerializerWithRelations(BadgrBaseModelSerializer):
 
     class Meta:
         model = BadgeClass
-        fields = '__all__'
+        fields = "__all__"
 
 
 class StudentsEnrolledSerializerWithRelations(BadgrBaseModelSerializer):
     """
     Serializer of students enrolled with representation of it's relations to badgeclass and issuer
     """
+
     badge_class = BadgeClassSerializerWithRelations()
-    revoked = serializers.SerializerMethodField('get_assertion_revokation')
+    revoked = serializers.SerializerMethodField("get_assertion_revokation")
 
     def get_assertion_revokation(self, enrollment):
         badge_instance = enrollment.badge_instance
@@ -45,10 +46,10 @@ class StudentsEnrolledSerializerWithRelations(BadgrBaseModelSerializer):
 
     class Meta:
         model = StudentsEnrolled
-        fields = '__all__'
+        fields = "__all__"
 
     def to_representation(self, instance):
         ret = serializers.ModelSerializer.to_representation(self, instance)
-        day_as_string = ret['date_created'].split('T')[0]
-        ret['date_created'] = day_as_string
+        day_as_string = ret["date_created"].split("T")[0]
+        ret["date_created"] = day_as_string
         return ret

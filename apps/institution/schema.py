@@ -3,20 +3,42 @@ from graphene_django.types import DjangoObjectType
 
 from issuer.models import Issuer
 from issuer.schema import IssuerType
-from mainsite.graphql_utils import UserProvisionmentResolverMixin, ContentTypeIdResolverMixin, StaffResolverMixin, \
-    ImageResolverMixin, PermissionsResolverMixin, DefaultLanguageResolverMixin
+from mainsite.graphql_utils import (
+    UserProvisionmentResolverMixin,
+    ContentTypeIdResolverMixin,
+    StaffResolverMixin,
+    ImageResolverMixin,
+    PermissionsResolverMixin,
+    DefaultLanguageResolverMixin,
+)
 from mainsite.utils import generate_image_url
 from staff.schema import InstitutionStaffType, FacultyStaffType
 from .models import Institution, Faculty, BadgeClassTag
 
 
-class FacultyType(UserProvisionmentResolverMixin, PermissionsResolverMixin, StaffResolverMixin,
-                  ContentTypeIdResolverMixin, DefaultLanguageResolverMixin, DjangoObjectType):
+class FacultyType(
+    UserProvisionmentResolverMixin,
+    PermissionsResolverMixin,
+    StaffResolverMixin,
+    ContentTypeIdResolverMixin,
+    DefaultLanguageResolverMixin,
+    DjangoObjectType,
+):
     class Meta:
         model = Faculty
-        fields = ('name_english', 'name_dutch', 'entity_id', 'institution', 'created_at', 'description_english',
-                  'description_dutch', 'content_type_id', 'on_behalf_of', 'on_behalf_of_url',
-                  'on_behalf_of_display_name')
+        fields = (
+            "name_english",
+            "name_dutch",
+            "entity_id",
+            "institution",
+            "created_at",
+            "description_english",
+            "description_dutch",
+            "content_type_id",
+            "on_behalf_of",
+            "on_behalf_of_url",
+            "on_behalf_of_display_name",
+        )
 
     issuers = graphene.List(IssuerType)
     issuer_count = graphene.Int()
@@ -30,10 +52,10 @@ class FacultyType(UserProvisionmentResolverMixin, PermissionsResolverMixin, Staf
         return self.name
 
     def resolve_issuers(self, info):
-        return self.get_issuers(info.context.user, ['may_read'])
+        return self.get_issuers(info.context.user, ["may_read"])
 
     def resolve_issuer_count(self, info):
-        return self.get_issuers(info.context.user, ['may_read']).__len__()
+        return self.get_issuers(info.context.user, ["may_read"]).__len__()
 
     def resolve_pending_enrollment_count(self, info):
         return self.cached_pending_enrollments().__len__()
@@ -48,19 +70,52 @@ class FacultyType(UserProvisionmentResolverMixin, PermissionsResolverMixin, Staf
 class BadgeClassTagType(DjangoObjectType):
     class Meta:
         model = BadgeClassTag
-        fields = ('id', 'name',)
+        fields = (
+            "id",
+            "name",
+        )
 
 
-class InstitutionType(UserProvisionmentResolverMixin, PermissionsResolverMixin, StaffResolverMixin, ImageResolverMixin,
-                      ContentTypeIdResolverMixin, DefaultLanguageResolverMixin, DjangoObjectType):
+class InstitutionType(
+    UserProvisionmentResolverMixin,
+    PermissionsResolverMixin,
+    StaffResolverMixin,
+    ImageResolverMixin,
+    ContentTypeIdResolverMixin,
+    DefaultLanguageResolverMixin,
+    DjangoObjectType,
+):
     class Meta:
         model = Institution
-        fields = ('entity_id', 'identifier', 'name_english', 'name_dutch', 'staff', 'created_at', 'description_english',
-                  'description_dutch', 'institution_type', 'image_english', 'image_dutch', 'grading_table', 'brin',
-                  'content_type_id', 'grondslag_formeel', 'grondslag_informeel', 'default_language', 'id',
-                  'direct_awarding_enabled', 'award_allow_all_institutions', 'lti_enabled', 'alternative_identifier',
-                  'eppn_reg_exp_format', 'linkedin_org_identifier', 'sis_integration_enabled', 'ob3_ssi_agent_enabled',
-                  'micro_credentials_enabled')
+        fields = (
+            "entity_id",
+            "identifier",
+            "name_english",
+            "name_dutch",
+            "staff",
+            "created_at",
+            "description_english",
+            "description_dutch",
+            "institution_type",
+            "image_english",
+            "image_dutch",
+            "grading_table",
+            "brin",
+            "content_type_id",
+            "grondslag_formeel",
+            "grondslag_informeel",
+            "default_language",
+            "id",
+            "direct_awarding_enabled",
+            "award_allow_all_institutions",
+            "lti_enabled",
+            "alternative_identifier",
+            "eppn_reg_exp_format",
+            "linkedin_org_identifier",
+            "sis_integration_enabled",
+            "ob3_ssi_agent_enabled",
+            "micro_credentials_enabled",
+        )
 
     faculties = graphene.List(FacultyType)
     public_faculties = graphene.List(FacultyType)
@@ -86,13 +141,17 @@ class InstitutionType(UserProvisionmentResolverMixin, PermissionsResolverMixin, 
         return list(self.badgeclasstag_set.all())
 
     def resolve_faculties(self, info):
-        return self.get_faculties(info.context.user, ['may_read'])
+        return self.get_faculties(info.context.user, ["may_read"])
 
     def resolve_public_faculties(self, info):
         return self.cached_faculties()
 
     def resolve_award_allowed_institutions(self, info):
-        institutions = Institution.objects.all() if self.award_allow_all_institutions else self.award_allowed_institutions.all()
+        institutions = (
+            Institution.objects.all()
+            if self.award_allow_all_institutions
+            else self.award_allowed_institutions.all()
+        )
         return [institution.identifier for institution in institutions]
 
 
@@ -110,16 +169,27 @@ class Query(object):
 
     def resolve_issuers(self, info, **kwargs):
         user = info.context.user
-        return [iss for iss in Issuer.objects.filter(faculty__institution=user.institution, archived=False) if
-                iss.has_permissions(user, ['may_update'])]
+        return [
+            iss
+            for iss in Issuer.objects.filter(
+                faculty__institution=user.institution, archived=False
+            )
+            if iss.has_permissions(user, ["may_update"])
+        ]
 
     def resolve_institutions(self, info, **kwargs):
-        is_superuser = hasattr(info.context.user, 'is_superuser') and info.context.user.is_superuser
-        return [inst for inst in Institution.objects.all() if
-                inst.has_permissions(info.context.user, ['may_read']) or is_superuser]
+        is_superuser = (
+            hasattr(info.context.user, "is_superuser")
+            and info.context.user.is_superuser
+        )
+        return [
+            inst
+            for inst in Institution.objects.all()
+            if inst.has_permissions(info.context.user, ["may_read"]) or is_superuser
+        ]
 
     def resolve_public_institution(self, info, **kwargs):
-        id = kwargs.get('id')
+        id = kwargs.get("id")
         if id is not None:
             institution = Institution.objects.get(entity_id=id)
             return institution
@@ -128,11 +198,15 @@ class Query(object):
         return Institution.objects.filter(public_institution=True).all()
 
     def resolve_faculties(self, info, **kwargs):
-        return [fac for fac in Faculty.objects.all() if fac.has_permissions(info.context.user, ['may_read'])]
+        return [
+            fac
+            for fac in Faculty.objects.all()
+            if fac.has_permissions(info.context.user, ["may_read"])
+        ]
 
     def resolve_faculty(self, info, **kwargs):
-        id = kwargs.get('id')
+        id = kwargs.get("id")
         if id is not None:
             faculty = Faculty.objects.get(entity_id=id)
-            if faculty.has_permissions(info.context.user, ['may_read']):
+            if faculty.has_permissions(info.context.user, ["may_read"]):
                 return faculty

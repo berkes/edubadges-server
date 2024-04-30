@@ -12,13 +12,18 @@ from django.http import HttpResponseForbidden, HttpResponseRedirect
 from rest_framework.exceptions import AuthenticationFailed
 
 from badgeuser.authcode import accesstoken_for_authcode
-from badgrsocialauth.utils import set_session_verification_email, get_session_badgr_app, get_session_authcode, \
-    AuthErrorCode
+from badgrsocialauth.utils import (
+    set_session_verification_email,
+    get_session_badgr_app,
+    get_session_authcode,
+    AuthErrorCode,
+)
 
 
 class BadgrSocialAccountAdapter(DefaultSocialAccountAdapter):
-
-    def authentication_error(self, request, provider_id, error=None, exception=None, extra_context={}):
+    def authentication_error(
+        self, request, provider_id, error=None, exception=None, extra_context={}
+    ):
         badgr_app = get_session_badgr_app(self.request)
         extra_context["authError"] = error
         if "code" not in extra_context:
@@ -37,7 +42,9 @@ class BadgrSocialAccountAdapter(DefaultSocialAccountAdapter):
         """
         self._update_session(request, sociallogin)
 
-        return super(BadgrSocialAccountAdapter, self).save_user(request, sociallogin, form)
+        return super(BadgrSocialAccountAdapter, self).save_user(
+            request, sociallogin, form
+        )
 
     def pre_social_login(self, request, sociallogin):
         """
@@ -58,8 +65,12 @@ class BadgrSocialAccountAdapter(DefaultSocialAccountAdapter):
                     redirect_url = "{url}?authError={message}".format(
                         url=badgr_app.ui_connect_success_redirect,
                         message=urllib.parse.quote(
-                            "Could not add social login. This account is already associated with a user."))
-                    raise ImmediateHttpResponse(HttpResponseRedirect(redirect_to=redirect_url))
+                            "Could not add social login. This account is already associated with a user."
+                        ),
+                    )
+                    raise ImmediateHttpResponse(
+                        HttpResponseRedirect(redirect_to=redirect_url)
+                    )
         except AuthenticationFailed as e:
             raise ImmediateHttpResponse(HttpResponseForbidden(e.detail))
 

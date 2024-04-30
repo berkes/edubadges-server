@@ -15,14 +15,15 @@ class ValidImageValidator(object):
         if image:
             try:
                 from PIL import Image
+
                 img = Image.open(image)
                 img.verify()
             except Exception as e:
                 if not verify_svg(image):
-                    raise ValidationError('Invalid image.')
+                    raise ValidationError("Invalid image.")
             else:
                 if img.format != "PNG":
-                    raise ValidationError('Invalid PNG')
+                    raise ValidationError("Invalid PNG")
 
 
 class BadgeExtensionValidator(object):
@@ -30,14 +31,17 @@ class BadgeExtensionValidator(object):
 
     def __call__(self, value):
         if len(value) > 0:
-            options = {"use_cache": True, "cache_expire_after": 60 * 60 * 24,
-                       "jsonld_options": {"compactArrays": False}}
+            options = {
+                "use_cache": True,
+                "cache_expire_after": 60 * 60 * 24,
+                "jsonld_options": {"compactArrays": False},
+            }
             result = openbadges.verifier.validate_extensions(value.copy(), **options)
-            report = result.get('report', {})
-            if not report.get('valid', False):
-                messages = report.get('messages', [])
+            report = result.get("report", {})
+            if not report.get("valid", False):
+                messages = report.get("messages", [])
                 if len(messages) > 0:
-                    msg = [message.get('result', self.message) for message in messages]
+                    msg = [message.get("result", self.message) for message in messages]
                 else:
                     msg = self.message
                 raise ValidationError(msg)

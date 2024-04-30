@@ -6,47 +6,93 @@ from django.forms import ModelForm
 from mainsite.admin import badgr_admin
 from mainsite.utils import admin_list_linkify
 from staff.models import PermissionedRelationshipBase
-from .models import BadgeUser, EmailAddressVariant, Terms, CachedEmailAddress, UserProvisionment, TermsUrl, \
-    ImportBadgeAllowedUrl, StudentAffiliation
+from .models import (
+    BadgeUser,
+    EmailAddressVariant,
+    Terms,
+    CachedEmailAddress,
+    UserProvisionment,
+    TermsUrl,
+    ImportBadgeAllowedUrl,
+    StudentAffiliation,
+)
 
 
 class EmailAddressInline(TabularInline):
     model = CachedEmailAddress
-    fk_name = 'user'
+    fk_name = "user"
     extra = 0
-    fields = ('email', 'verified', 'primary')
+    fields = ("email", "verified", "primary")
 
 
 class BadgeUserAdmin(UserAdmin):
     readonly_fields = (
-        'email', 'first_name', 'last_name', 'entity_id', 'date_joined', 'last_login', 'username', 'entity_id')
-    list_display = ('last_name', 'first_name', 'email', 'eppn', 'date_joined',
-                    admin_list_linkify('institution', 'name'))
-    list_filter = ('is_active', 'is_staff', 'is_superuser', 'date_joined', 'last_login')
-    search_fields = ('email', 'first_name', 'last_name', 'username', 'entity_id')
-    fieldsets = (
-        ('Metadata', {'fields': ('entity_id', 'username', 'date_joined',), 'classes': ('collapse',)}),
-        (None, {'fields': ('email', 'first_name', 'last_name')}),
-        ('Access', {'fields': ('is_active', 'is_staff', 'is_superuser', 'password')}),
-        ('Permissions', {'fields': ('groups',)}),
+        "email",
+        "first_name",
+        "last_name",
+        "entity_id",
+        "date_joined",
+        "last_login",
+        "username",
+        "entity_id",
     )
-    filter_horizontal = ('groups', 'user_permissions', 'faculty',)
+    list_display = (
+        "last_name",
+        "first_name",
+        "email",
+        "eppn",
+        "date_joined",
+        admin_list_linkify("institution", "name"),
+    )
+    list_filter = ("is_active", "is_staff", "is_superuser", "date_joined", "last_login")
+    search_fields = ("email", "first_name", "last_name", "username", "entity_id")
+    fieldsets = (
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "entity_id",
+                    "username",
+                    "date_joined",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (None, {"fields": ("email", "first_name", "last_name")}),
+        ("Access", {"fields": ("is_active", "is_staff", "is_superuser", "password")}),
+        ("Permissions", {"fields": ("groups",)}),
+    )
+    filter_horizontal = (
+        "groups",
+        "user_permissions",
+        "faculty",
+    )
     inlines = [
         EmailAddressInline,
     ]
 
     def eppn(self, obj):
         student_affiliations = StudentAffiliation.objects.filter(user=obj).all()
-        return ", ".join([s.eppn for s in student_affiliations]) if student_affiliations else None
+        return (
+            ", ".join([s.eppn for s in student_affiliations])
+            if student_affiliations
+            else None
+        )
 
 
 badgr_admin.register(BadgeUser, BadgeUserAdmin)
 
 
 class EmailAddressVariantAdmin(ModelAdmin):
-    search_fields = ('canonical_email', 'email',)
-    list_display = ('email', 'canonical_email',)
-    raw_id_fields = ('canonical_email',)
+    search_fields = (
+        "canonical_email",
+        "email",
+    )
+    list_display = (
+        "email",
+        "canonical_email",
+    )
+    raw_id_fields = ("canonical_email",)
 
 
 badgr_admin.register(EmailAddressVariant, EmailAddressVariantAdmin)
@@ -55,7 +101,7 @@ badgr_admin.register(EmailAddressVariant, EmailAddressVariantAdmin)
 class TermsInlineForm(ModelForm):
     class Meta:
         model = Terms
-        fields = ('terms_type', 'version', 'entity_id')
+        fields = ("terms_type", "version", "entity_id")
 
 
 class TermsInline(TabularInline):
@@ -63,7 +109,7 @@ class TermsInline(TabularInline):
     extra = 0
 
     form = TermsInlineForm
-    readonly_fields = ('entity_id',)
+    readonly_fields = ("entity_id",)
 
 
 class TermsUrlInline(TabularInline):
@@ -72,9 +118,20 @@ class TermsUrlInline(TabularInline):
 
 
 class TermsAdmin(ModelAdmin):
-    list_display = ('terms_type', admin_list_linkify('institution', 'name'),
-                    'version', 'created_at', 'terms_url_count')
-    readonly_fields = ('created_at', 'created_by', 'updated_at', 'updated_by', 'entity_id')
+    list_display = (
+        "terms_type",
+        admin_list_linkify("institution", "name"),
+        "version",
+        "created_at",
+        "terms_url_count",
+    )
+    readonly_fields = (
+        "created_at",
+        "created_by",
+        "updated_at",
+        "updated_by",
+        "entity_id",
+    )
 
     inlines = [TermsUrlInline]
 
@@ -86,7 +143,7 @@ badgr_admin.register(Terms, TermsAdmin)
 
 
 class TermsUrlAdmin(ModelAdmin):
-    list_display = ('url', 'language', admin_list_linkify('terms', 'terms_type'))
+    list_display = ("url", "language", admin_list_linkify("terms", "terms_type"))
 
 
 badgr_admin.register(TermsUrl, TermsUrlAdmin)
@@ -95,13 +152,13 @@ badgr_admin.register(TermsUrl, TermsUrlAdmin)
 class UserProvisionmentCreateForm(ModelForm):
     class Meta:
         model = UserProvisionment
-        fields = ('email', 'object_id', 'content_type')
+        fields = ("email", "object_id", "content_type")
 
 
 class UserProvisionmentAdmin(ModelAdmin):
     form = UserProvisionmentCreateForm
-    list_display = ('created_at', 'email', 'type', 'rejected')
-    add_form_template = 'admin/custom/userprovisionment_add_form.html'
+    list_display = ("created_at", "email", "type", "rejected")
+    add_form_template = "admin/custom/userprovisionment_add_form.html"
 
     def save_model(self, request, obj, form, change):
         obj.created_by = request.user
@@ -113,11 +170,13 @@ class UserProvisionmentAdmin(ModelAdmin):
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(UserProvisionmentAdmin, self).get_form(request, obj, **kwargs)
-        content_type = ContentType.objects.get(model='institution')
-        form.base_fields['content_type'].initial = content_type.id
-        form.base_fields['content_type'].disabled = True
-        form.base_fields['content_type'].help_text = "This field is not editable"
-        form.base_fields['object_id'].help_text = "Set the ID of the institution the invite is for"
+        content_type = ContentType.objects.get(model="institution")
+        form.base_fields["content_type"].initial = content_type.id
+        form.base_fields["content_type"].disabled = True
+        form.base_fields["content_type"].help_text = "This field is not editable"
+        form.base_fields[
+            "object_id"
+        ].help_text = "Set the ID of the institution the invite is for"
         return form
 
 
@@ -125,7 +184,7 @@ badgr_admin.register(UserProvisionment, UserProvisionmentAdmin)
 
 
 class ImportBadgeAllowedUrlAdmin(ModelAdmin):
-    list_display = ('url',)
+    list_display = ("url",)
 
 
 badgr_admin.register(ImportBadgeAllowedUrl, ImportBadgeAllowedUrlAdmin)

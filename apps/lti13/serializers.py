@@ -10,15 +10,21 @@ class LtiCourseSerializer(serializers.Serializer):
     identifier = serializers.CharField(max_length=255, required=True)
     title = serializers.CharField(max_length=255, required=False)
     label = serializers.CharField(max_length=255, required=True)
-    badgeclass = PrimaryKeyRelatedField(many=False, queryset=BadgeClass.objects.all(), required=True)
-    tool = PrimaryKeyRelatedField(many=False, queryset=LtiTool.objects.all(), required=True)
+    badgeclass = PrimaryKeyRelatedField(
+        many=False, queryset=BadgeClass.objects.all(), required=True
+    )
+    tool = PrimaryKeyRelatedField(
+        many=False, queryset=LtiTool.objects.all(), required=True
+    )
 
     class Meta:
         model = LtiCourse
 
     def create(self, validated_data, **kwargs):
-        user_permissions = validated_data['badgeclass'].get_permissions(validated_data['created_by'])
-        if user_permissions['may_update']:
+        user_permissions = validated_data["badgeclass"].get_permissions(
+            validated_data["created_by"]
+        )
+        if user_permissions["may_update"]:
             new_lti_course = LtiCourse.objects.create(**validated_data)
             return new_lti_course
         else:

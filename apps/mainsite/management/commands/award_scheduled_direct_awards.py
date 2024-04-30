@@ -7,24 +7,24 @@ from django.utils import timezone
 
 
 class Command(BaseCommand):
-
     def handle(self, *args, **kwargs):
         from directaward.models import DirectAwardBundle, DirectAward
 
         # Prevent MySQLdb._exceptions.OperationalError: (2006, 'MySQL server has gone away')
         connections.close_all()
 
-        logger = logging.getLogger('Badgr.Debug')
+        logger = logging.getLogger("Badgr.Debug")
         logger.info("Running award_scheduled_direct_awards")
 
-        direct_award_bundles = DirectAwardBundle.objects.filter(scheduled_at__lt=timezone.now(),
-                                                                status=DirectAwardBundle.STATUS_SCHEDULED).all()
+        direct_award_bundles = DirectAwardBundle.objects.filter(
+            scheduled_at__lt=timezone.now(), status=DirectAwardBundle.STATUS_SCHEDULED
+        ).all()
 
         for bundle in direct_award_bundles:
             for da in bundle.directaward_set.all():
                 da.status = DirectAward.STATUS_UNACCEPTED
-                da.badgeclass.remove_cached_data(['cached_direct_awards'])
-                da.badgeclass.remove_cached_data(['cached_direct_award_bundles'])
+                da.badgeclass.remove_cached_data(["cached_direct_awards"])
+                da.badgeclass.remove_cached_data(["cached_direct_award_bundles"])
                 try:
                     da.save()
                     da.notify_recipient()
@@ -36,6 +36,8 @@ class Command(BaseCommand):
             bundle.save()
             bundle.notify_awarder()
 
-            bundle.remove_cached_data(['cached_direct_awards'])
+            bundle.remove_cached_data(["cached_direct_awards"])
 
-        logger.info(f"Finished {len(direct_award_bundles)} award_scheduled_direct_awards")
+        logger.info(
+            f"Finished {len(direct_award_bundles)} award_scheduled_direct_awards"
+        )

@@ -37,7 +37,9 @@ class PermissionedModelMixin(object):
             return perm_count == len(required_permissions)
         return False
 
-    def get_all_staff_memberships_in_current_branch(self, user, check_parents=True, check_children=True):
+    def get_all_staff_memberships_in_current_branch(
+        self, user, check_parents=True, check_children=True
+    ):
         """
         returns all staff memberships beloning to this user in the branch that this entity is part of
         :param user: BadgeUser
@@ -45,12 +47,15 @@ class PermissionedModelMixin(object):
         :param check_children: bool
         :return: required_permissions: a list of staff memberships
         """
-        all_entities_in_my_branch = self.get_all_entities_in_branch(check_parents=check_parents,
-                                                                    check_children=check_children)
+        all_entities_in_my_branch = self.get_all_entities_in_branch(
+            check_parents=check_parents, check_children=check_children
+        )
         all_staff_memberships_in_my_branch = []
         for entity in all_entities_in_my_branch:
             all_staff_memberships_in_my_branch += entity.cached_staff()
-        return [staff for staff in all_staff_memberships_in_my_branch if staff.user == user]
+        return [
+            staff for staff in all_staff_memberships_in_my_branch if staff.user == user
+        ]
 
     def get_all_entities_in_branch(self, check_parents=True, check_children=True):
         """
@@ -83,12 +88,22 @@ class PermissionedModelMixin(object):
             local_perms = self._get_local_permissions(user)
             combined_perms = {}
             for key in local_perms:
-                combined_perms[key] = local_perms[key] if local_perms[key] > parent_perms[key] else parent_perms[key]
+                combined_perms[key] = (
+                    local_perms[key]
+                    if local_perms[key] > parent_perms[key]
+                    else parent_perms[key]
+                )
             return combined_perms
         except AttributeError:  # recursive base case (reached root of permission tree, i.e. the Institution)
             perms = self._get_local_permissions(user)
-            if hasattr(user, 'is_teacher') and user.is_teacher and self == user.institution:  # if at the recursive base case the institution is the same as user's institution
-                perms['may_read'] = True  # then add may_read, everyone in institution is a reader
+            if (
+                hasattr(user, "is_teacher")
+                and user.is_teacher
+                and self == user.institution
+            ):  # if at the recursive base case the institution is the same as user's institution
+                perms["may_read"] = (
+                    True  # then add may_read, everyone in institution is a reader
+                )
             return perms
 
     def has_permissions(self, user, permissions):
@@ -163,10 +178,14 @@ class PermissionedModelMixin(object):
             - only publishes the parent of the initially deleted entity
             - removes all associated staff memberships without publishing the associated object (the one that is deleted)
         """
-        publish_parent = kwargs.pop('publish_parent', True)
+        publish_parent = kwargs.pop("publish_parent", True)
         if self.assertions:
             raise ProtectedError(
-                "{} may only be deleted if there are no awarded Assertions.".format(self.__class__.__name__), self)
+                "{} may only be deleted if there are no awarded Assertions.".format(
+                    self.__class__.__name__
+                ),
+                self,
+            )
         try:  # first the children
             kids = self.children
             for child in kids:
@@ -186,7 +205,7 @@ class PermissionedModelMixin(object):
     def return_value_according_to_language(self, attribute_english, attribute_dutch):
         """Convenience function that returns the right attribute according to the
         language selection of its parent institution"""
-        if self.__class__.__name__ == 'Institution':
+        if self.__class__.__name__ == "Institution":
             institution = self
         else:
             institution = self.institution

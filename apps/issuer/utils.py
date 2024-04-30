@@ -1,4 +1,3 @@
-
 import hashlib
 import re
 
@@ -6,15 +5,15 @@ from django.urls import resolve, Resolver404
 from mainsite.utils import OriginSetting
 
 OBI_VERSION_CONTEXT_IRIS = {
-    '1_1': 'https://w3id.org/openbadges/v1',
-    '2_0': 'https://w3id.org/openbadges/v2',
+    "1_1": "https://w3id.org/openbadges/v1",
+    "2_0": "https://w3id.org/openbadges/v2",
 }
 
-CURRENT_OBI_VERSION = '2_0'
+CURRENT_OBI_VERSION = "2_0"
 CURRENT_OBI_CONTEXT_IRI = OBI_VERSION_CONTEXT_IRIS.get(CURRENT_OBI_VERSION)
 
 # assertions that were baked and saved to BadgeInstance.image used this version
-UNVERSIONED_BAKED_VERSION = '2_0'
+UNVERSIONED_BAKED_VERSION = "2_0"
 
 
 def get_obi_context(obi_version):
@@ -31,21 +30,17 @@ def add_obi_version_ifneeded(url, obi_version):
     if not url.startswith(OriginSetting.HTTP):
         return url
     return "{url}{sep}v={obi_version}".format(
-        url=url,
-        sep='&' if '?' in url else '?',
-        obi_version=obi_version)
+        url=url, sep="&" if "?" in url else "?", obi_version=obi_version
+    )
 
 
 def generate_sha256_hashstring(identifier, salt=None):
-    key = '{}{}'.format(identifier, salt if salt is not None else "")
-    return 'sha256$' + hashlib.sha256(key.encode('utf-8')).hexdigest()
+    key = "{}{}".format(identifier, salt if salt is not None else "")
+    return "sha256$" + hashlib.sha256(key.encode("utf-8")).hexdigest()
 
 
 def is_probable_url(string):
-    earl = re.compile(r'^https?')
+    earl = re.compile(r"^https?")
     if string is None:
         return False
     return earl.match(string)
-
-
-

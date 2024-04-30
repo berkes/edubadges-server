@@ -16,14 +16,26 @@ from django.utils.deconstruct import deconstructible
 from oauth2_provider.models import AccessToken
 from rest_framework.authtoken.models import Token
 
-AUTH_USER_MODEL = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
+AUTH_USER_MODEL = getattr(settings, "AUTH_USER_MODEL", "auth.User")
 
 
 class BaseAuditedModel(CacheModel):
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey('badgeuser.BadgeUser', on_delete=models.SET_NULL, blank=True, null=True, related_name="+")
+    created_by = models.ForeignKey(
+        "badgeuser.BadgeUser",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="+",
+    )
     updated_at = models.DateTimeField(auto_now=True)
-    updated_by = models.ForeignKey('badgeuser.BadgeUser', on_delete=models.SET_NULL, blank=True, null=True, related_name="+")
+    updated_by = models.ForeignKey(
+        "badgeuser.BadgeUser",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="+",
+    )
 
     class Meta:
         abstract = True
@@ -31,6 +43,7 @@ class BaseAuditedModel(CacheModel):
     @property
     def cached_creator(self):
         from badgeuser.models import BadgeUser
+
         return BadgeUser.cached.get(id=self.created_by_id)
 
 
@@ -38,8 +51,8 @@ class EmailBlacklist(models.Model):
     email = models.EmailField(unique=True)
 
     class Meta:
-        verbose_name = 'Blacklisted email'
-        verbose_name_plural = 'Blacklisted emails'
+        verbose_name = "Blacklisted email"
+        verbose_name_plural = "Blacklisted emails"
 
     @staticmethod
     def generate_email_signature(email):
@@ -48,14 +61,21 @@ class EmailBlacklist(models.Model):
         expiration = datetime.utcnow() + timedelta(days=7)  # In one week.
         timestamp = int((expiration - datetime(1970, 1, 1)).total_seconds())
 
-        email_encoded = base64.b64encode(email.encode('utf-8'))
-        hashed = hmac.new(secret_key.encode('utf-8'), email_encoded + bytes(str(timestamp), 'utf-8'), sha1)
+        email_encoded = base64.b64encode(email.encode("utf-8"))
+        hashed = hmac.new(
+            secret_key.encode("utf-8"),
+            email_encoded + bytes(str(timestamp), "utf-8"),
+            sha1,
+        )
 
-        return reverse('unsubscribe', kwargs={
-            'email_encoded': email_encoded,
-            'expiration': timestamp,
-            'signature': hashed.hexdigest(),
-        })
+        return reverse(
+            "unsubscribe",
+            kwargs={
+                "email_encoded": email_encoded,
+                "expiration": timestamp,
+                "signature": hashed.hexdigest(),
+            },
+        )
 
     @staticmethod
     def verify_email_signature(email_encoded, expiration, signature):
@@ -71,11 +91,11 @@ class BadgrAppManager(Manager):
         existing_session_app_id = None
 
         if request:
-            if request.META.get('HTTP_ORIGIN'):
-                origin = request.META.get('HTTP_ORIGIN')
-            elif request.META.get('HTTP_REFERER'):
-                origin = request.META.get('HTTP_REFERER')
-            existing_session_app_id = request.session.get('badgr_app_pk', None)
+            if request.META.get("HTTP_ORIGIN"):
+                origin = request.META.get("HTTP_ORIGIN")
+            elif request.META.get("HTTP_REFERER"):
+                origin = request.META.get("HTTP_REFERER")
+            existing_session_app_id = request.session.get("badgr_app_pk", None)
 
         if origin:
             url = urllib.parse.urlparse(origin)
@@ -89,7 +109,7 @@ class BadgrAppManager(Manager):
                 return self.get(id=existing_session_app_id)
             except self.model.DoesNotExist:
                 pass
-        badgr_app_id = getattr(settings, 'BADGR_APP_ID', None)
+        badgr_app_id = getattr(settings, "BADGR_APP_ID", None)
         if raise_exception and not badgr_app_id:
             raise ImproperlyConfigured("Must specify a BADGR_APP_ID")
         return self.get(id=badgr_app_id)
@@ -108,7 +128,9 @@ class BadgrApp(CreatedUpdatedBy, CreatedUpdatedAt, IsActive, CacheModel):
     oauth_authorization_redirect = models.URLField(null=True)
     use_auth_code_exchange = models.BooleanField(default=False)
     is_demo_environment = models.BooleanField(default=False, blank=True, null=True)
-    oauth_application = models.ForeignKey("oauth2_provider.Application", on_delete=models.PROTECT, null=True, blank=True)
+    oauth_application = models.ForeignKey(
+        "oauth2_provider.Application", on_delete=models.PROTECT, null=True, blank=True
+    )
 
     objects = BadgrAppManager()
 
@@ -119,11 +141,13 @@ class BadgrApp(CreatedUpdatedBy, CreatedUpdatedAt, IsActive, CacheModel):
 @deconstructible
 class DefinedScopesValidator(object):
     message = "Does not match defined scopes"
-    code = 'invalid'
+    code = "invalid"
 
     def __call__(self, value):
-        defined_scopes = set(getattr(settings, 'OAUTH2_PROVIDER', {}).get('SCOPES', {}).keys())
-        provided_scopes = set(s.strip() for s in re.split(r'[\s\n]+', value))
+        defined_scopes = set(
+            getattr(settings, "OAUTH2_PROVIDER", {}).get("SCOPES", {}).keys()
+        )
+        provided_scopes = set(s.strip() for s in re.split(r"[\s\n]+", value))
         if provided_scopes - defined_scopes:
             raise ValidationError(self.message, code=self.code)
         pass
@@ -133,11 +157,15 @@ class DefinedScopesValidator(object):
 
 
 class ApplicationInfo(CacheModel):
-    application = models.OneToOneField('oauth2_provider.Application', on_delete=models.CASCADE)
+    application = models.OneToOneField(
+        "oauth2_provider.Application", on_delete=models.CASCADE
+    )
     icon = models.FileField(blank=True, null=True)
     name = models.CharField(max_length=254, blank=True, null=True, default=None)
     website_url = models.URLField(blank=True, null=True, default=None)
-    allowed_scopes = models.TextField(blank=False, validators=[DefinedScopesValidator()])
+    allowed_scopes = models.TextField(
+        blank=False, validators=[DefinedScopesValidator()]
+    )
     trust_email_verification = models.BooleanField(default=False)
 
     def get_visible_name(self):
@@ -151,14 +179,14 @@ class ApplicationInfo(CacheModel):
 
     @property
     def scope_list(self):
-        return [s for s in re.split(r'[\s\n]+', self.allowed_scopes) if s]
+        return [s for s in re.split(r"[\s\n]+", self.allowed_scopes) if s]
 
 
 class AccessTokenProxy(AccessToken):
     class Meta:
         proxy = True
-        verbose_name = 'access token'
-        verbose_name_plural = 'access tokens'
+        verbose_name = "access token"
+        verbose_name_plural = "access tokens"
 
     def __str__(self):
         return self.obscured_token
@@ -175,8 +203,8 @@ class AccessTokenProxy(AccessToken):
 class LegacyTokenProxy(Token):
     class Meta:
         proxy = True
-        verbose_name = 'Legacy token'
-        verbose_name_plural = 'Legacy tokens'
+        verbose_name = "Legacy token"
+        verbose_name_plural = "Legacy tokens"
 
     def __str__(self):
         return self.obscured_token
@@ -191,7 +219,6 @@ class LegacyTokenProxy(Token):
 
 
 class ArchiveMixin(CacheModel):
-
     archived = models.BooleanField(default=False)
 
     class Meta:
@@ -211,11 +238,15 @@ class ArchiveMixin(CacheModel):
             - only publishes the parent of the initially archived entity
             - removes all associated staff memberships without publishing the associated object (the one that is archived)
         """
-        publish_parent = kwargs.pop('publish_parent', True)
+        publish_parent = kwargs.pop("publish_parent", True)
         if not self.may_archive:
             raise ProtectedError(
-                "{} may only be deleted if there are no awarded Assertions.".format(self.__class__.__name__), self)
-        if hasattr(self, 'children'):
+                "{} may only be deleted if there are no awarded Assertions.".format(
+                    self.__class__.__name__
+                ),
+                self,
+            )
+        if hasattr(self, "children"):
             for child in self.children:
                 child.archive(publish_parent=False)
         for membership in self.staff_items:

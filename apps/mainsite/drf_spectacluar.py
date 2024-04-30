@@ -1,26 +1,25 @@
 import os
 
 included_endpoint_prefixes = [
-    '/directaward/create',
-    '/directaward/bundle',
-    '/directaward/delete-direct-awards',
-    '/directaward/resend-direct-awards',
-    '/directaward/revoke-direct-awards',
-    '/earner/badges',
-    '/issuer/create',
-    '/issuer/edit',
-    '/issuer/delete',
-    '/issuer/badgeclasses',
-    '/issuer/revoke-assertions',
-    '/public/institutions',
-    '/public/issuers',
-    '/public/badges',
-    '/public/assertions',
-    '/public/validator'
-    '/public/institution'
+    "/directaward/create",
+    "/directaward/bundle",
+    "/directaward/delete-direct-awards",
+    "/directaward/resend-direct-awards",
+    "/directaward/revoke-direct-awards",
+    "/earner/badges",
+    "/issuer/create",
+    "/issuer/edit",
+    "/issuer/delete",
+    "/issuer/badgeclasses",
+    "/issuer/revoke-assertions",
+    "/public/institutions",
+    "/public/issuers",
+    "/public/badges",
+    "/public/assertions",
+    "/public/validator" "/public/institution",
 ]
 
-excluded_keywords = ['pubkey', 'baked', 'image']
+excluded_keywords = ["pubkey", "baked", "image"]
 
 
 def _included_endpoint(path: str):
@@ -38,11 +37,11 @@ def _contains_excluded_keywords(path):
 
 
 def custom_postprocessing_hook(result, generator, request, public):
-    result["security"] = [{"openId": []}],
+    result["security"] = ([{"openId": []}],)
     result["components"]["securitySchemes"] = {
         "openId": {
             "type": "openIdConnect",
-            "openIdConnectUrl": f"{os.environ['EDUID_PROVIDER_URL']}/.well-known/openid-configuration"
+            "openIdConnectUrl": f"{os.environ['EDUID_PROVIDER_URL']}/.well-known/openid-configuration",
         }
     }
     for path, details in result["paths"].items():

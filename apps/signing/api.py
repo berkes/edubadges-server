@@ -14,8 +14,12 @@ from signing.serializers import SymmetricKeySerializer
 
 class SymmetricKeyListView(BaseEntityListView):
     model = SymmetricKey
-    http_method_names = ['post']
-    permission_classes = (AuthenticatedWithVerifiedEmail, MaySignAssertions, OwnsSymmetricKey)
+    http_method_names = ["post"]
+    permission_classes = (
+        AuthenticatedWithVerifiedEmail,
+        MaySignAssertions,
+        OwnsSymmetricKey,
+    )
     serializer_class = SymmetricKeySerializer
     serializer_class_v1 = SymmetricKeySerializer
 
@@ -23,7 +27,7 @@ class SymmetricKeyListView(BaseEntityListView):
         """
         Add password to create a SymmetricKey for this user
         """
-        password = request.data.get('password', None)
+        password = request.data.get("password", None)
         if not password:
             raise serializers.ValidationError({"password": "field is required"})
         return super(SymmetricKeyListView, self).post(request, **kwargs)
@@ -37,8 +41,12 @@ class SymmetricKeyListView(BaseEntityListView):
 
 class SymmetricKeyDetailView(BaseEntityDetailView):
     model = SymmetricKey
-    http_method_names = ['put', 'get']
-    permission_classes = (AuthenticatedWithVerifiedEmail, MaySignAssertions, OwnsSymmetricKey)
+    http_method_names = ["put", "get"]
+    permission_classes = (
+        AuthenticatedWithVerifiedEmail,
+        MaySignAssertions,
+        OwnsSymmetricKey,
+    )
     serializer_class = SymmetricKeySerializer
 
     def get_object(self, request, **kwargs):
@@ -46,18 +54,28 @@ class SymmetricKeyDetailView(BaseEntityDetailView):
 
 
 class SetIssuerSignerView(APIView):
-    permission_classes = (AuthenticatedWithVerifiedEmail, MaySignAssertions, OwnsSymmetricKey)
-    http_method_names = ['put']
+    permission_classes = (
+        AuthenticatedWithVerifiedEmail,
+        MaySignAssertions,
+        OwnsSymmetricKey,
+    )
+    http_method_names = ["put"]
 
     def put(self, request, **kwargs):
-        issuer = Issuer.objects.get(entity_id=request.data['issuer_slug'])
-        remove = request.data.get('action') == 'remove'
-        add = request.data.get('action') == 'add'
-        signer_matching_email = [email for email in CachedEmailAddress.objects.filter(email=request.data['signer_email'], verified=True) if email.user.is_teacher]
+        issuer = Issuer.objects.get(entity_id=request.data["issuer_slug"])
+        remove = request.data.get("action") == "remove"
+        add = request.data.get("action") == "add"
+        signer_matching_email = [
+            email
+            for email in CachedEmailAddress.objects.filter(
+                email=request.data["signer_email"], verified=True
+            )
+            if email.user.is_teacher
+        ]
         if not signer_matching_email:
-            raise ValidationError('No matching email found')
+            raise ValidationError("No matching email found")
         if len(signer_matching_email) > 1:
-            raise ValidationError('Multiple matching emails found')
+            raise ValidationError("Multiple matching emails found")
         signer = signer_matching_email[0].user
         staff_instance = IssuerStaff.objects.get(
             user=signer,
@@ -73,17 +91,17 @@ class SetIssuerSignerView(APIView):
 
 class PublicKeyIssuerDetailView(APIView):
     permission_classes = (permissions.AllowAny,)
-    http_method_names = ['get']
+    http_method_names = ["get"]
     model = PublicKeyIssuer
 
     def get(self, request, **kwargs):
-        pubkey_issuer = PublicKeyIssuer.objects.get(entity_id=kwargs['entity_id'])
+        pubkey_issuer = PublicKeyIssuer.objects.get(entity_id=kwargs["entity_id"])
         return Response(
             {
                 "@context": "https://w3id.org/openbadges/v2",
                 "type": "CryptographicKey",
                 "id": pubkey_issuer.public_url,
                 "owner": pubkey_issuer.owner_public_url,
-                "publicKeyPem": pubkey_issuer.public_key.public_key_pem
+                "publicKeyPem": pubkey_issuer.public_key.public_key_pem,
             }
         )

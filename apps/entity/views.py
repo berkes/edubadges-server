@@ -4,8 +4,8 @@ from rest_framework.response import Response
 
 
 def exception_handler(exc, context):
-    version = context.get('kwargs', None).get('version', 'v1')
-    if version == 'v1':
+    version = context.get("kwargs", None).get("version", "v1")
+    if version == "v1":
         # Use the default exception-handling logic for v1
         if isinstance(exc, ProtectedError):
             description, protected_objects = exc.args

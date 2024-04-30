@@ -1,4 +1,4 @@
-#  Copyright 2010 Concentric Sky, Inc. 
+#  Copyright 2010 Concentric Sky, Inc.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ from cachemodel.decorators import find_fields_decorated_with
 from cachemodel.utils import generate_cache_key
 
 
-
 class CacheModel(models.Model):
     """An abstract model that has convienence functions for dealing with caching."""
+
     objects = models.Manager()
     cached = CacheModelManager()
 
@@ -32,7 +32,7 @@ class CacheModel(models.Model):
         abstract = True
 
     def save(self, *args, **kwargs):
-        #find all the denormalized fields and update them
+        # find all the denormalized fields and update them
         self.denormalize()
 
         # save ourselves to the database
@@ -47,11 +47,11 @@ class CacheModel(models.Model):
 
     def publish(self):
         # cache ourselves so that we're ready for .cached.get(pk=)
-        self.publish_by('pk')
+        self.publish_by("pk")
 
         # find any @cached_methods with auto_publish=True
-        for method in find_fields_decorated_with(self, '_cached_method'):
-            if not getattr(method, '_cached_method_auto_publish', False):
+        for method in find_fields_decorated_with(self, "_cached_method"):
+            if not getattr(method, "_cached_method_auto_publish", False):
                 continue
             try:
                 # run the cached method and store it in cache
@@ -75,17 +75,19 @@ class CacheModel(models.Model):
         cache.delete(self.publish_key(*args))
 
     def denormalize(self):
-        for method in find_fields_decorated_with(self, '_denormalized_field'):
-            if hasattr(method, '_denormalized_field_name'):
+        for method in find_fields_decorated_with(self, "_denormalized_field"):
+            if hasattr(method, "_denormalized_field_name"):
                 setattr(self, method._denormalized_field_name, method(self))
 
     def publish_method(self, method_name, *args, **kwargs):
         method = getattr(self, method_name, None)
-        if not getattr(method, '_cached_method', False):
-            raise AttributeError("method '%s' is not a cached_method.");
-        target = getattr(method, '_cached_method_target', None)
+        if not getattr(method, "_cached_method", False):
+            raise AttributeError("method '%s' is not a cached_method.")
+        target = getattr(method, "_cached_method_target", None)
         if callable(target):
-            key = generate_cache_key([self.__class__.__name__, target.__name__, self.pk], *args, **kwargs)
+            key = generate_cache_key(
+                [self.__class__.__name__, target.__name__, self.pk], *args, **kwargs
+            )
             data = target(self, *args, **kwargs)
             cache.set(key, data, CACHE_FOREVER_TIMEOUT)
 

@@ -7,16 +7,34 @@ from directaward.models import DirectAward, DirectAwardBundle
 class DirectAwardType(DjangoObjectType):
     class Meta:
         model = DirectAward
-        fields = ('entity_id', 'eppn', 'status', 'recipient_email', 'badgeclass', 'created_at', 'updated_at',
-                  'resend_at', 'delete_at')
+        fields = (
+            "entity_id",
+            "eppn",
+            "status",
+            "recipient_email",
+            "badgeclass",
+            "created_at",
+            "updated_at",
+            "resend_at",
+            "delete_at",
+        )
 
 
 class DirectAwardBundleType(DjangoObjectType):
     class Meta:
         model = DirectAwardBundle
-        fields = ('entity_id', 'badgeclass', 'created_at', 'updated_at',
-                  'assertion_count', 'direct_award_count', 'direct_award_rejected_count',
-                  'direct_award_scheduled_count', 'direct_award_revoked_count', 'initial_total')
+        fields = (
+            "entity_id",
+            "badgeclass",
+            "created_at",
+            "updated_at",
+            "assertion_count",
+            "direct_award_count",
+            "direct_award_rejected_count",
+            "direct_award_scheduled_count",
+            "direct_award_revoked_count",
+            "initial_total",
+        )
 
     assertion_count = graphene.Int()
     direct_award_count = graphene.Int()
@@ -40,7 +58,7 @@ class Query(object):
         return list(info.context.user.direct_awards)
 
     def resolve_direct_award(self, info, **kwargs):
-        id = kwargs.get('id')
+        id = kwargs.get("id")
         if id is not None:
             da = DirectAward.objects.get(entity_id=id)
             if da.eppn in info.context.user.eppns:
@@ -48,13 +66,25 @@ class Query(object):
 
     def resolve_all_unclaimed_direct_awards(self, info, **kwargs):
         user = info.context.user
-        return [da for da in DirectAward.objects.filter(badgeclass__issuer__faculty__institution=user.institution,
-                                                        status__in=[DirectAward.STATUS_UNACCEPTED,
-                                                                    DirectAward.STATUS_SCHEDULED]) if
-                da.badgeclass.has_permissions(info.context.user, ['may_award'])]
+        return [
+            da
+            for da in DirectAward.objects.filter(
+                badgeclass__issuer__faculty__institution=user.institution,
+                status__in=[
+                    DirectAward.STATUS_UNACCEPTED,
+                    DirectAward.STATUS_SCHEDULED,
+                ],
+            )
+            if da.badgeclass.has_permissions(info.context.user, ["may_award"])
+        ]
 
     def resolve_all_deleted_direct_awards(self, info, **kwargs):
         user = info.context.user
-        return [da for da in DirectAward.objects.filter(badgeclass__issuer__faculty__institution=user.institution,
-                                                        status=DirectAward.STATUS_DELETED) if
-                da.badgeclass.has_permissions(info.context.user, ['may_award'])]
+        return [
+            da
+            for da in DirectAward.objects.filter(
+                badgeclass__issuer__faculty__institution=user.institution,
+                status=DirectAward.STATUS_DELETED,
+            )
+            if da.badgeclass.has_permissions(info.context.user, ["may_award"])
+        ]

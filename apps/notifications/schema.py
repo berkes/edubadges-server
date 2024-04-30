@@ -7,7 +7,7 @@ from notifications.models import BadgeClassUserNotification
 class BadgeClassUserNotificationType(DjangoObjectType):
     class Meta:
         model = BadgeClassUserNotification
-        fields = ('badgeclass',)
+        fields = ("badgeclass",)
 
 
 class Query(object):

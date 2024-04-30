@@ -119,7 +119,8 @@ class EncryptedCursorPagination(BasePagination):
         else:
             sleep(60) # Or some other retry behavior
     """
-    cursor_query_param = 'cursor'
+
+    cursor_query_param = "cursor"
 
     page_size = 100
 
@@ -128,9 +129,9 @@ class EncryptedCursorPagination(BasePagination):
     # TODO: Add support for non-unique keys.  This should be possible by adding support for ordering by multiple fields.
     # For example, ordering = ('non_unique_field', 'pk') would fully disambiguate records. Would require  compound index
     # on those fields for efficient queries.
-    ordering = 'pk'
+    ordering = "pk"
 
-    pagination_secret_key = getattr(settings, 'PAGINATION_SECRET_KEY', None)
+    pagination_secret_key = getattr(settings, "PAGINATION_SECRET_KEY", None)
 
     if pagination_secret_key is not None:
         crypto = Fernet(pagination_secret_key)
@@ -146,13 +147,13 @@ class EncryptedCursorPagination(BasePagination):
         if cursor is None:
             return None, None
 
-        if cursor.startswith(':'):
+        if cursor.startswith(":"):
             return None, cursor[1:]
 
-        if cursor.endswith(':'):
+        if cursor.endswith(":"):
             return cursor[:-1], None
 
-        raise ValueError('Malformed cursor')
+        raise ValueError("Malformed cursor")
 
     def _get_elem_key(self, elem):
         """
@@ -165,8 +166,8 @@ class EncryptedCursorPagination(BasePagination):
         Return (prev_cursor, next_cursor) for given page.
         """
         if len(page) > 0:
-            prev_cursor = ':{}'.format(self._get_elem_key(page[0]))
-            next_cursor = '{}:'.format(self._get_elem_key(page[-1]))
+            prev_cursor = ":{}".format(self._get_elem_key(page[0]))
+            next_cursor = "{}:".format(self._get_elem_key(page[-1]))
             return prev_cursor, next_cursor
         else:
             return None, None
@@ -179,7 +180,7 @@ class EncryptedCursorPagination(BasePagination):
 
     def _encrypt_cursor(self, decrypted):
         if decrypted is not None:
-            return self.crypto.encrypt(bytes(decrypted, encoding='utf8'))
+            return self.crypto.encrypt(bytes(decrypted, encoding="utf8"))
         else:
             return decrypted
 
@@ -224,29 +225,35 @@ class EncryptedCursorPagination(BasePagination):
         if lower_limit is not None:
             with transaction.atomic():
                 # Select up page_size + 1 elements in forward order to populate page and hasNext
-                padded_page = queryset.filter(**{self.ordering + '__gt': lower_limit}) \
-                                      .order_by(self.ordering)[:self.page_size + 1]
+                padded_page = queryset.filter(
+                    **{self.ordering + "__gt": lower_limit}
+                ).order_by(self.ordering)[: self.page_size + 1]
                 # Select element for hasPrevious
-                prev_elem = queryset.filter(**{self.ordering + '__lte': lower_limit}) \
-                                    .order_by('-' + self.ordering) \
-                                    .first()
+                prev_elem = (
+                    queryset.filter(**{self.ordering + "__lte": lower_limit})
+                    .order_by("-" + self.ordering)
+                    .first()
+                )
 
             page, next_elem = self._partition_padded_page(padded_page)
         elif upper_limit is not None:
             with transaction.atomic():
                 # Select up page_size + 1 elements in reverse order to populate page and hasPrevious
-                padded_page = queryset.filter(**{self.ordering + '__lt': upper_limit}) \
-                                      .order_by('-' + self.ordering)[:self.page_size + 1]
+                padded_page = queryset.filter(
+                    **{self.ordering + "__lt": upper_limit}
+                ).order_by("-" + self.ordering)[: self.page_size + 1]
                 # Select element for hasNext
-                next_elem = queryset.filter(**{self.ordering + '__gte': upper_limit}) \
-                                    .order_by(self.ordering) \
-                                    .first()
+                next_elem = (
+                    queryset.filter(**{self.ordering + "__gte": upper_limit})
+                    .order_by(self.ordering)
+                    .first()
+                )
 
             page, prev_elem = self._partition_padded_page(padded_page)
             page = list(reversed(page))
         else:
             # Select up page_size + 1 elements in forward order to populate page and hasNext
-            padded_page = queryset.order_by(self.ordering)[:self.page_size + 1]
+            padded_page = queryset.order_by(self.ordering)[: self.page_size + 1]
             prev_elem = None  # Special case--hasPrevious is always False
 
             page, next_elem = self._partition_padded_page(padded_page)
@@ -273,18 +280,20 @@ class EncryptedCursorPagination(BasePagination):
         Given serialized page of data, return a paginated Response object.
         """
         info = self.get_page_info()
-        info['results'] = data
+        info["results"] = data
         return Response(info)
 
     def get_page_info(self):
-        return OrderedDict([
-            ('hasNext', self.has_next),
-            ('nextResults', self.next_link if self.has_next else None),
-            ('nextCursor', self.next_cursor if self.has_next else None),
-            ('hasPrevious', self.has_prev),
-            ('previousResults', self.prev_link if self.has_prev else None),
-            ('previousCursor', self.prev_cursor if self.has_prev else None),
-        ])
+        return OrderedDict(
+            [
+                ("hasNext", self.has_next),
+                ("nextResults", self.next_link if self.has_next else None),
+                ("nextCursor", self.next_cursor if self.has_next else None),
+                ("hasPrevious", self.has_prev),
+                ("previousResults", self.prev_link if self.has_prev else None),
+                ("previousCursor", self.prev_cursor if self.has_prev else None),
+            ]
+        )
 
     def get_link_header(self):
         links = []
@@ -293,4 +302,4 @@ class EncryptedCursorPagination(BasePagination):
         if self.has_prev:
             links.append('<{}>; rel="prev"'.format(self.prev_link))
         if len(links):
-            return ', '.join(links)
+            return ", ".join(links)

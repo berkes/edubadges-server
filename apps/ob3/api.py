@@ -15,10 +15,10 @@ from mainsite.settings import OB3_API_URL, UI_URL
 
 class CredentialsView(APIView):
     permission_classes = (permissions.AllowAny,)
-    http_method_names = ['post']
+    http_method_names = ["post"]
 
     def post(self, request, **kwargs):
-        badge_id = request.data.get('badge_id')
+        badge_id = request.data.get("badge_id")
         badge_instance = BadgeInstance.objects.get(id=badge_id)
         if badge_instance.user != request.user:
             raise Http404
@@ -33,40 +33,34 @@ class CredentialsView(APIView):
             "credential": {
                 "issuer": {
                     "id": f"{UI_URL}/public/issuers/{issuer.entity_id}",
-                    "type": [
-                        "Profile"
-                    ],
-                    "name": issuer.name_english
+                    "type": ["Profile"],
+                    "name": issuer.name_english,
                 },
                 "credentialSubject": {
                     "id": "",
-                    "type": [
-                        "AchievementSubject"
-                    ],
+                    "type": ["AchievementSubject"],
                     "achievement": {
                         "id": f"{UI_URL}/public/assertions/{badge_instance.entity_id}",
-                        "type": [
-                            "Achievement"
-                        ],
-                        "criteria": {
-                            criteria_type: criteria
-                        },
+                        "type": ["Achievement"],
+                        "criteria": {criteria_type: criteria},
                         "description": badgeclass.description,
                         "name": badgeclass.name,
-                        "image": {
-                            "id": badgeclass.image_url()
-                        }
-                    }
-                }
-            }
+                        "image": {"id": badgeclass.image_url()},
+                    },
+                },
+            },
         }
-        requests.post(json=request_data,
-                      url=f"{OB3_API_URL}/v1/credentials",
-                      headers={'Accept': 'application/json'})
+        requests.post(
+            json=request_data,
+            url=f"{OB3_API_URL}/v1/credentials",
+            headers={"Accept": "application/json"},
+        )
         subject_id = {"subjectId": subject_id}
-        response = requests.post(json=subject_id,
-                                 url=f"{OB3_API_URL}/v1/offers",
-                                 headers={'Accept': 'application/json'})
+        response = requests.post(
+            json=subject_id,
+            url=f"{OB3_API_URL}/v1/offers",
+            headers={"Accept": "application/json"},
+        )
         response_json = response.json()
 
         img = qrcode.make(response_json)

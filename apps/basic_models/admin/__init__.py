@@ -5,7 +5,6 @@ from .admin import CreatedUpdatedBy, LocalPreview, AutoGroupMeta
 
 
 class site(object):
-
     @staticmethod
     def add_base(admin_class, base):
         if base not in admin_class.__bases__:
@@ -18,10 +17,10 @@ class site(object):
 
         field_names = [field.name for field in model._meta.fields]
 
-        if _list_has_all_values(field_names, ('created_by', 'updated_by')):
+        if _list_has_all_values(field_names, ("created_by", "updated_by")):
             site.add_base(admin_class, CreatedUpdatedBy)
 
-        if 'is_active' in field_names:
+        if "is_active" in field_names:
             site.add_base(admin_class, LocalPreview)
             site.add_base(admin_class, ToggleActive)
             site.add_base(admin_class, DeleteRequiresPermission)
