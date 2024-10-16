@@ -27,6 +27,7 @@ class CredentialsView(APIView):
         credential = self.__credential(offer_id, badge_instance)
 
         if variant == 'sphereon':
+            credential.update({"credentialConfigurationId": "OpenBadgeCredential"})
             open_id_credential_offer = self.__issue_sphereon_badge(credential)
             # We get back a json object that wraps an openid-credential-offer:// uri
             # Inside this, is a a parameter credential_offer_uri that contains the actual offer uri
@@ -34,6 +35,7 @@ class CredentialsView(APIView):
             offer = json.loads(open_id_credential_offer).get('uri')
 
         elif variant == 'unime':
+           credential.update({"credentialConfigurationId": "openbadge_credential"})
            self.__issue_unime_badge(credential)
            offer = self.__get_offer(offer_id)
         else:
@@ -49,17 +51,16 @@ class CredentialsView(APIView):
             raise Http404
 
     def __issue_sphereon_badge(self, credential):
-        credential.update({"credentialConfigurationId": "OpenBadgeCredential"})
         offer_request_body = {
-                "credentials": ["OpenBadgeCredential"],
-                "grants": {
-                    "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
-                        "pre-authorized_code": "This-is-sent-via-SMS",
-                        "user_pin_required": False
-                        }
-                    },
-                "CredentialDataSupplierInput": credential
+            "credentials": ["OpenBadgeCredential"],
+            "grants": {
+                "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+                    "pre-authorized_code": "This-is-sent-via-SMS",
+                    "user_pin_required": False
                 }
+            },
+            "CredentialDataSupplierInput": credential
+        }
         resp = requests.post(json=offer_request_body,
                       url=f"{OB3_AGENT_URL_SPHEREON}/edubadges/api/create-offer",
                       headers={'Accept': 'application/json',
@@ -85,18 +86,17 @@ class CredentialsView(APIView):
 
     def __credential(self, offer_id, badge_instance):
         badgeclass = badge_instance.badgeclass
-        criteria = badgeclass.criteria_text
-        issuer = badgeclass.issuer
+
         return {
             "offerId": offer_id,
-            "credentialConfigurationId": "openbadge_credential",
+            "credentialConfigurationId": None,
             "credential": {
                 "issuer": {
-                    "id": f"{UI_URL}/public/issuers/{issuer.entity_id}",
+                    "id": f"{UI_URL}/public/issuers/{badgeclass.issuer.entity_id}",
                     "type": [
                         "Profile"
                     ],
-                    "name": issuer.name_english
+                    "name": badgeclass.issuer.name_english
                 },
                 "credentialSubject": {
                     "type": [
@@ -108,7 +108,7 @@ class CredentialsView(APIView):
                             "Achievement"
                         ],
                         "criteria": {
-                            "narrative": criteria
+                            "narrative": badgeclass.criteria_text
                         },
                         "description": badgeclass.description,
                         "name": badgeclass.name,
